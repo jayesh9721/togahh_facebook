@@ -1,0 +1,2140 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Badge,
+  Card,
+  MetricCard,
+  SectionTitle,
+  WorkflowStep,
+  EmptyState,
+  Spinner,
+  SecondaryButton,
+} from "./components";
+
+// ─── CONSTANTS ───────────────────────────────────────────────
+const API_URL = "/api/trigger-n8n";
+
+const TABS = [
+  { id: "overview",   label: "Overview",        icon: "▦" },
+  { id: "analysis",   label: "Ads Analysis",    icon: "◎" },
+  { id: "create",     label: "Create Ad",       icon: "◈" },
+  { id: "approval",   label: "Approval",        icon: "◉" },
+  { id: "campaigns",  label: "Live Campaigns",  icon: "◷" },
+  { id: "social",     label: "Social Posts",     icon: "◫" },
+  { id: "reports",    label: "Reports",          icon: "◧" },
+];
+
+const TOPICS = [
+  "Black-grey tattoo",
+  "Anime tattoo",
+  "Realistic tattoo",
+  "Piercing (general)",
+  "Clean shop / hygiene",
+  "VIP service",
+  "Award-winning artists",
+];
+
+// ─── MAIN DASHBOARD ──────────────────────────────────────────
+export default function Dashboard() {
+  const [tab, setTab] = useState("overview");
+  const [selectedTopic, setSelectedTopic] = useState(TOPICS[1]);
+
+  // Analysis
+  const [analysisStatus, setAnalysisStatus] = useState("idle");
+  // idle | generating | waiting | done | error
+  const [analysisData,   setAnalysisData]   = useState(null);
+  const [analysisError,  setAnalysisError]  = useState("");
+
+  // Ad creation
+  const [adStatus, setAdStatus] = useState("idle");
+  // idle | generating | waiting | done | error
+  const [adData,   setAdData]   = useState(null);
+
+  // Approval & launch
+  const [approved,     setApproved]     = useState(false);
+  const [budget,       setBudget]       = useState(50);
+  const [duration,     setDuration]     = useState(7);
+  const [launchStatus, setLaunchStatus] = useState("idle");
+  // idle | launching | live | error
+
+  // Campaigns
+  const [campaigns,   setCampaigns]   = useState([]);
+  const [stoppedIds,  setStoppedIds]  = useState([]);
+  const [stopStatus,  setStopStatus]  = useState("idle");
+  // idle | stopping | stopped | error
+
+  // Report
+  const [reportStatus, setReportStatus] = useState("idle");
+  // idle | generating | done | error
+
+  // Social
+  const [socialStatus,    setSocialStatus]    = useState("idle");
+  // idle | generating | done | error
+  const [socialActiveEvt, setSocialActiveEvt] = useState(null);
+
+  // Shared error
+  const [webhookError, setWebhookError] = useState("");
+
+  // Approval queue
+  const [scheduledAds,      setScheduledAds]      = useState([]);
+  const [approvedAds,       setApprovedAds]        = useState([]);
+  const [rejectedAds,       setRejectedAds]        = useState([]);
+  const [approvalFilter,    setApprovalFilter]     = useState("all");
+  const [adCardStatuses,    setAdCardStatuses]     = useState({});
+  const [schedulePickerOpen,setSchedulePickerOpen] = useState(null);
+  const [scheduleDates,     setScheduleDates]      = useState({});
+
+  // ── Reusable webhook caller ──
+  async function callWebhook(payload, setStatus) {
+    setStatus("generating");
+    setWebhookError("");
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json().catch(() => ({ ok: true }));
+      const resultData = Array.isArray(data) ? data[0] : data;
+      const isValid =
+        resultData &&
+        typeof resultData === "object" &&
+        !resultData.rawResponse &&
+        Object.keys(resultData).length > 0;
+      return isValid ? resultData : null;
+    } catch (e) {
+      setStatus("error");
+      setWebhookError(e.message || "Could not reach n8n");
+      console.error("Webhook error:", e);
+      return null;
+    }
+  }
+
+  // ── Action 1: Competitor Analysis ──
+  async function runCompetitorAnalysis() {
+    setAnalysisData(null);
+    setAnalysisError("");
+    const result = await callWebhook({
+      action:    "competitor_analysis",
+      topic:     selectedTopic,
+      timestamp: new Date().toISOString(),
+    }, setAnalysisStatus);
+    if (result) {
+      console.log("n8n analysis response:", result);
+      setAnalysisData(result);
+      setAnalysisStatus("done");
+    } else if (analysisStatus !== "error") {
+      setAnalysisStatus("waiting");
+    }
+  }
+
+  // ── Action 2: Generate Ad ──
+  async function createAdFromAnalysis() {
+    setAdData(null);
+    const result = await callWebhook({
+      action:            "generate_ad",
+      topic:             selectedTopic,
+      executive_summary: analysisData?.executive_summary   || "",
+      top_hooks:         analysisData?.hooks_table         || [],
+      competitors:       (analysisData?.competitors_table  || []).slice(0, 5),
+      gaps:              analysisData?.gaps_table          || [],
+      timestamp:         new Date().toISOString(),
+    }, setAdStatus);
+    if (result) {
+      console.log("n8n ad response:", result);
+      setAdData(result);
+      setAdStatus("done");
+    } else if (adStatus !== "error") {
+      setAdStatus("waiting");
+    }
+  }
+
+  // ── Action 3: Launch Meta Ad ──
+  async function launchMetaAd() {
+    const result = await callWebhook({
+      action:    "launch_meta_ad",
+      adData:    adData,
+      budget:    budget,
+      duration:  duration,
+      timestamp: new Date().toISOString(),
+    }, setLaunchStatus);
+    // Optimistic: add to campaigns list regardless of n8n response
+    setCampaigns(prev => [...prev, {
+      id:       `C${Date.now()}`,
+      name:     adData?.topic    || "New Campaign",
+      platform: "Meta",
+      budget:   `€${budget}/day`,
+      duration: `${duration} days`,
+      status:   "launching",
+      spend:    "€0",
+      ctr:      "—",
+      clicks:   0,
+      leads:    0,
+    }]);
+    if (result) setLaunchStatus("live");
+    setTab("campaigns");
+  }
+
+  // ── Action 4: Stop Campaign ──
+  async function stopCampaign(campaignId, campaignName) {
+    setStoppedIds(prev => [...prev, campaignId]); // optimistic
+    await callWebhook({
+      action:       "stop_campaign",
+      campaignId:   campaignId,
+      campaignName: campaignName,
+      timestamp:    new Date().toISOString(),
+    }, setStopStatus);
+  }
+
+  // ── Action 5: Generate Report ──
+  async function generateReport() {
+    const result = await callWebhook({
+      action:    "generate_report",
+      period:    "manual",
+      timestamp: new Date().toISOString(),
+    }, setReportStatus);
+    if (result) setReportStatus("done");
+  }
+
+  // ── Action 6: Generate Social Post ──
+  async function generateSocialPost(eventName) {
+    setSocialActiveEvt(eventName);
+    const result = await callWebhook({
+      action:     "generate_social_post",
+      event:      eventName,
+      platforms:  ["ig", "tiktok", "fb", "snapchat"],
+      timestamp:  new Date().toISOString(),
+    }, setSocialStatus);
+    if (result) setSocialStatus("done");
+  }
+
+  // ── Receive n8n result ──
+  function receiveAnalysisResult(data) {
+    setAnalysisData(data);
+    setAnalysisStatus("done");
+  }
+
+  // ── DEV: simulate n8n response ──
+  function simulateAnalysisResponse() {
+    receiveAnalysisResult({
+      success: true,
+      executive_summary:
+        "Local competitors rely heavily on price discounts, creating a clear opening for premium value-based positioning. Anime and illustrative styles show 3× more engagement than traditional black-and-grey. Capturing this gap with quality-focused hooks could deliver strong CTR at lower spend.",
+      competitors_table: [
+        { name: "InkMaster Berlin",    ads: 14, score: 72, threat: "High",   angle: "Price discount",       hook: "15% off your first tattoo" },
+        { name: "TattooVibe Studio",   ads: 9,  score: 85, threat: "High",   angle: "Anime / trend-driven", hook: "Your fave character, on skin" },
+        { name: "PiercingPro",         ads: 6,  score: 54, threat: "Medium", angle: "Seasonal event",       hook: "Halloween piercing package" },
+        { name: "ArtSkin Collective",  ads: 11, score: 61, threat: "Medium", angle: "Keyword targeting",    hook: "Realistic portrait near you" },
+        { name: "NeedlePoint Studio",  ads: 4,  score: 38, threat: "Low",    angle: "Brand awareness",      hook: "Award-winning artists" },
+      ],
+      hooks_table: [
+        { pattern: "Stencil peel reveal",    example: "Watch the paper peel — one take, zero edits",          reason: "High curiosity and retention in first 3 sec",   score: "9.2" },
+        { pattern: "Artist sketch time-lapse", example: "From blank page to skin in 60 seconds",              reason: "Process content builds trust and saves",         score: "8.7" },
+        { pattern: "Customer reaction close-up", example: "Her face when she saw the final piece",            reason: "Emotional payoff drives shares",                 score: "8.4" },
+        { pattern: "Before / after split",    example: "Reference photo → finished tattoo",                   reason: "Clear transformation = strong CTA intent",      score: "8.1" },
+        { pattern: "Trending audio + art",    example: "Anime piece synced to viral track",                   reason: "Algorithm boost + niche community share",       score: "7.9" },
+      ],
+      market_insights_table: [
+        { field: "Dominant platform",  value: "Meta (Instagram Reels)" },
+        { field: "Average CPC",        value: "€1.20" },
+        { field: "Top ad format",      value: "Video reel — 15 sec" },
+        { field: "Trending style",     value: "Anime & illustrative (+3×)" },
+        { field: "Peak booking time",  value: "Thu–Sat, 6–10 pm" },
+        { field: "Avg. competitor spend", value: "€60/day" },
+      ],
+      gaps_table: [
+        { gap: "Quality vs price",       opportunity: "Counter discount-led ads with award proof",         priority: "High",   impact: "High CTR, lower CPA" },
+        { gap: "Anime niche untapped",   opportunity: "Anime reel featuring your artist's style",          priority: "High",   impact: "3× organic reach potential" },
+        { gap: "Seasonal hooks missing", opportunity: "Halloween piercing + costume combo campaign",       priority: "Medium", impact: "Timely spike in bookings" },
+        { gap: "Realistic portraits",    opportunity: "Target 'realistic tattoo near me' keywords",       priority: "Medium", impact: "High-intent search traffic" },
+        { gap: "Process transparency",   opportunity: "Behind-the-scenes studio content series",          priority: "Low",    impact: "Brand trust & retention" },
+      ],
+    });
+  }
+
+  // ── Approval helpers ──
+  function getAdStatus(adId) {
+    return adCardStatuses[adId] || "pending";
+  }
+
+  function approveAd(ad) {
+    setAdCardStatuses(prev => ({ ...prev, [ad.id]: "approved" }));
+    setApprovedAds(prev => [...prev.filter(a => a.id !== ad.id), ad]);
+    setSchedulePickerOpen(null);
+  }
+
+  function rejectAd(adId) {
+    setAdCardStatuses(prev => ({ ...prev, [adId]: "rejected" }));
+    setApprovedAds(prev  => prev.filter(a => a.id !== adId));
+    setScheduledAds(prev => prev.filter(a => a.id !== adId));
+    setSchedulePickerOpen(null);
+  }
+
+  function scheduleAd(ad) {
+    const dateInfo = scheduleDates[ad.id];
+    if (!dateInfo?.date) return;
+    const scheduledAt = `${dateInfo.date} ${dateInfo.time || "09:00"}`;
+    setAdCardStatuses(prev => ({ ...prev, [ad.id]: "scheduled" }));
+    setScheduledAds(prev => [
+      ...prev.filter(a => a.id !== ad.id),
+      { ...ad, scheduledAt },
+    ]);
+    setSchedulePickerOpen(null);
+  }
+
+  function undoAction(adId) {
+    setAdCardStatuses(prev => ({ ...prev, [adId]: "pending" }));
+    setApprovedAds(prev  => prev.filter(a => a.id !== adId));
+    setScheduledAds(prev => prev.filter(a => a.id !== adId));
+    setRejectedAds(prev  => prev.filter(a => a.id !== adId));
+  }
+
+  function approveAllPending() {
+    (adData?.ad_scripts || [])
+      .filter(a => getAdStatus(a.id) === "pending")
+      .forEach(ad => approveAd(ad));
+  }
+
+  function rejectAllPending() {
+    (adData?.ad_scripts || [])
+      .filter(a => getAdStatus(a.id) === "pending")
+      .forEach(ad => rejectAd(ad.id));
+  }
+
+  function countByStatus(status) {
+    return (adData?.ad_scripts || []).filter(a => getAdStatus(a.id) === status).length;
+  }
+
+  function simulateAdResponse() {
+    setAdData({
+      topic: selectedTopic,
+      headline: "Where Anime Meets Skin — Your Story, Inked Forever",
+      body: "Our award-winning artists bring your favourite anime characters to life. Bold lines, vivid colour, unmatched detail. Book your consultation today.",
+      cta: "Book Now",
+      format: "Video reel — 15 sec",
+      platform: "Meta (FB + IG)",
+    });
+    setAdStatus("done");
+  }
+
+  // ─── STYLES ───
+  const tabStyle = (id) => ({
+    padding: "8px 16px",
+    borderRadius: "var(--radius-pill)",
+    fontSize: 13,
+    cursor: "pointer",
+    border:
+      tab === id
+        ? "1.5px solid var(--purple)"
+        : "1px solid transparent",
+    background: tab === id ? "var(--purple-light)" : "transparent",
+    color: tab === id ? "var(--purple)" : "var(--text-muted)",
+    fontWeight: tab === id ? 600 : 400,
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontFamily: "inherit",
+    transition: "all 0.2s ease",
+    letterSpacing: "0.01em",
+  });
+
+  const topicBtnStyle = (t) => ({
+    fontSize: 12,
+    padding: "6px 14px",
+    borderRadius: "var(--radius-pill)",
+    cursor: "pointer",
+    border:
+      selectedTopic === t
+        ? "1.5px solid var(--purple)"
+        : "1px solid var(--border)",
+    background:
+      selectedTopic === t ? "var(--purple-light)" : "transparent",
+    color:
+      selectedTopic === t ? "var(--purple)" : "var(--text-muted)",
+    fontWeight: selectedTopic === t ? 500 : 400,
+    fontFamily: "inherit",
+    transition: "all 0.2s ease",
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  return (
+    <div
+      style={{
+        fontFamily: "var(--font-inter), system-ui, -apple-system, sans-serif",
+        color: "var(--text)",
+        maxWidth: 920,
+        margin: "0 auto",
+        padding: "0 20px 3rem",
+      }}
+    >
+      {/* ── HEADER ── */}
+      <div
+        style={{
+          padding: "20px 0 8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "var(--radius-md)",
+              background:
+                "linear-gradient(135deg, var(--purple), #7C6FD8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontSize: 16,
+              fontWeight: 700,
+            }}
+          >
+            T
+          </div>
+          <div>
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Tattoo Studio
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              AI Automation Dashboard
+            </div>
+          </div>
+        </div>
+        <Badge text="n8n connected" color="var(--green)" bg="var(--green-light)" />
+      </div>
+
+      {/* ── NAV TABS ── */}
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          flexWrap: "wrap",
+          padding: "10px 0 18px",
+          borderBottom: "0.5px solid var(--border)",
+          marginBottom: 18,
+        }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            style={tabStyle(t.id)}
+            onClick={() => setTab(t.id)}
+          >
+            <span style={{ fontSize: 12, opacity: 0.7 }}>{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          OVERVIEW
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "overview" && (
+        <div className="animate-fade-in">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(140px, 1fr))",
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
+            <MetricCard
+              label="Live campaigns"
+              value={campaigns.length || "0"}
+              sub="Meta + Google"
+              color="var(--purple)"
+              bg="var(--purple-light)"
+            />
+            <MetricCard
+              label="Analysis status"
+              value={
+                analysisStatus === "done" ? "Ready" : "Idle"
+              }
+              sub="Competitor intel"
+              color="var(--green)"
+              bg="var(--green-light)"
+            />
+            <MetricCard
+              label="Pending approval"
+              value={adData && !approved ? "1" : "0"}
+              sub={
+                adData && !approved
+                  ? "Action needed"
+                  : "All clear"
+              }
+              color="var(--amber)"
+              bg="var(--amber-light)"
+              dot={!!(adData && !approved)}
+            />
+            <MetricCard
+              label="Stopped"
+              value={stoppedIds.length}
+              sub="This session"
+              color="var(--blue)"
+              bg="var(--blue-light)"
+            />
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 14,
+            }}
+          >
+            <Card>
+              <SectionTitle>n8n Integration</SectionTitle>
+              {[
+                [
+                  "Webhook URL",
+                  "/api/trigger-n8n → n8n",
+                  "var(--blue)",
+                  "var(--blue-light)",
+                ],
+                [
+                  "Analysis",
+                  analysisStatus,
+                  "var(--green)",
+                  "var(--green-light)",
+                ],
+                [
+                  "Ad generation",
+                  adStatus,
+                  "var(--green)",
+                  "var(--green-light)",
+                ],
+                [
+                  "Campaigns live",
+                  campaigns.length.toString(),
+                  "var(--purple)",
+                  "var(--purple-light)",
+                ],
+              ].map(([k, v, c, bg], i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "9px 0",
+                    borderBottom:
+                      i < 3
+                        ? "0.5px solid var(--border-light)"
+                        : "none",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {k}
+                  </span>
+                  <Badge text={v} color={c} bg={bg} />
+                </div>
+              ))}
+            </Card>
+
+            <Card>
+              <SectionTitle>Quick Actions</SectionTitle>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                {[
+                  ["Run competitor analysis", () => setTab("analysis"), "◎"],
+                  ["Create new ad", () => setTab("create"), "◈"],
+                  ["Review approvals", () => setTab("approval"), "◉"],
+                  ["Live campaigns", () => setTab("campaigns"), "◷"],
+                  ["Social posts", () => setTab("social"), "◫"],
+                  ["Reports", () => setTab("reports"), "◧"],
+                ].map(([label, fn, icon], i) => (
+                  <button
+                    key={i}
+                    onClick={fn}
+                    style={{
+                      fontSize: 12,
+                      padding: "9px 14px",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--border)",
+                      background: "var(--card-bg)",
+                      color: "var(--text)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontFamily: "inherit",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      transition:
+                        "background 0.15s, border-color 0.15s, transform 0.1s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background =
+                        "var(--purple-light)";
+                      e.currentTarget.style.borderColor =
+                        "var(--purple)";
+                      e.currentTarget.style.color =
+                        "var(--purple)";
+                      e.currentTarget.style.transform =
+                        "translateX(2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background =
+                        "var(--card-bg)";
+                      e.currentTarget.style.borderColor =
+                        "var(--border)";
+                      e.currentTarget.style.color = "var(--text)";
+                      e.currentTarget.style.transform =
+                        "translateX(0)";
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ opacity: 0.5, fontSize: 11 }}>{icon}</span>
+                      {label}
+                    </span>
+                    <span style={{ opacity: 0.4 }}>→</span>
+                  </button>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          ADS ANALYSIS
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "analysis" && (
+        <div className="animate-fade-in">
+          <Card style={{ marginBottom: 14 }}>
+            <SectionTitle>Topic for analysis</SectionTitle>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 20,
+              }}
+            >
+              {TOPICS.map((t) => (
+                <button
+                  key={t}
+                  style={topicBtnStyle(t)}
+                  onClick={() => setSelectedTopic(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <SectionTitle>n8n Workflow Steps</SectionTitle>
+            <WorkflowStep
+              step="1"
+              label="Trigger webhook"
+              sub={`POST → ${API_URL}/competitor_analysis`}
+              active={analysisStatus === "idle"}
+              done={analysisStatus !== "idle"}
+            />
+            <WorkflowStep
+              step="2"
+              label="n8n receives & scrapes competitors"
+              sub="Apify actor — IG, FB, Google local studios"
+              active={analysisStatus === "generating" || analysisStatus === "waiting"}
+              done={analysisStatus === "done"}
+            />
+            <WorkflowStep
+              step="3"
+              label="Claude analyzes patterns in n8n"
+              sub="CTR, creative type, offers, copy angles"
+              active={analysisStatus === "waiting"}
+              done={analysisStatus === "done"}
+            />
+            <WorkflowStep
+              step="4"
+              label="n8n POSTs results back to dashboard"
+              sub="Results appear below"
+              active={false}
+              done={analysisStatus === "done"}
+            />
+
+            {/* TRIGGER BUTTON — shown when idle, error, or done (allow re-run) */}
+            {(analysisStatus === "idle" || analysisStatus === "done" || analysisStatus === "error") && (
+              <div>
+                <button
+                  onClick={runCompetitorAnalysis}
+                  disabled={false}
+                  style={{
+                    width: "100%",
+                    padding: "11px 18px",
+                    borderRadius: "var(--radius-md)",
+                    border: "none",
+                    background: "var(--purple)",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "background 0.2s, transform 0.15s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#3D35A0"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "var(--purple)"; e.currentTarget.style.transform = "translateY(0)"; }}
+                >
+                  {analysisStatus === "done"
+                    ? "Re-run competitor analysis"
+                    : "Trigger n8n webhook — run competitor analysis"}
+                </button>
+                {analysisStatus === "error" && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--red-strong)" }}>
+                    Could not reach n8n: {analysisError || webhookError}. Please try again.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* GENERATING */}
+            {analysisStatus === "generating" && (
+              <div
+                className="animate-slide-up"
+                style={{ background: "var(--purple-light)", borderRadius: "var(--radius-md)", padding: 16, textAlign: "center" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 6 }}>
+                  <Spinner size={14} />
+                  <span style={{ fontSize: 13, color: "var(--purple)", fontWeight: 500 }}>
+                    Sending to n8n...
+                  </span>
+                </div>
+                <div style={{ fontFamily: "monospace", fontSize: 11, color: "var(--purple-dark)" }}>
+                  POST {API_URL}
+                </div>
+              </div>
+            )}
+
+            {/* WAITING */}
+            {analysisStatus === "waiting" && (
+              <div className="animate-slide-up">
+                <div
+                  style={{
+                    background: "var(--amber-light)",
+                    border: "0.5px solid var(--amber)",
+                    borderRadius: "var(--radius-md)",
+                    padding: 14,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "var(--amber)",
+                      fontWeight: 500,
+                      marginBottom: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Spinner size={12} color="var(--amber)" />
+                    Webhook triggered — waiting for n8n response
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--amber-dark)",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    n8n scraping + analyzing competitors. When
+                    done, n8n must POST results back here.
+                    <br />
+                    <strong>
+                      Add a &ldquo;Respond to Webhook&rdquo; node
+                      in n8n
+                    </strong>{" "}
+                    with the JSON format below.
+                  </div>
+                </div>
+
+                {/* Expected response format */}
+                <div
+                  style={{
+                    background: "var(--surface)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "12px 14px",
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "var(--text-muted)",
+                      marginBottom: 8,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Expected n8n response format
+                  </div>
+                  <pre
+                    style={{
+                      fontSize: 11,
+                      color: "var(--text)",
+                      margin: 0,
+                      lineHeight: 1.7,
+                      overflow: "auto",
+                    }}
+                  >
+                    {`{
+  "success": true,
+  "executive_summary": "...",
+  "competitors_table": [
+    { "name": "...", "ads": 0, "score": 0,
+      "threat": "...", "angle": "...", "hook": "..." }
+  ],
+  "hooks_table": [
+    { "pattern": "...", "example": "...",
+      "reason": "...", "score": "..." }
+  ],
+  "market_insights_table": [
+    { "field": "...", "value": "..." }
+  ],
+  "gaps_table": [
+    { "gap": "...", "opportunity": "...",
+      "priority": "...", "impact": "..." }
+  ]
+}`}
+                  </pre>
+                </div>
+
+                <SecondaryButton onClick={simulateAnalysisResponse}>
+                  ⚙ Simulate n8n response — UI testing only
+                </SecondaryButton>
+              </div>
+            )}
+
+            {/* ERROR */}
+            {analysisStatus === "error" && (
+              <div className="animate-slide-up">
+                <div
+                  style={{
+                    background: "var(--red-error-bg)",
+                    border: "0.5px solid var(--red-error)",
+                    borderRadius: "var(--radius-md)",
+                    padding: 14,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "var(--red-strong)",
+                      fontWeight: 500,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Webhook trigger failed
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--red-dark)",
+                    }}
+                  >
+                    {analysisError}
+                  </div>
+                </div>
+                <SecondaryButton
+                  onClick={() => setAnalysisStatus("idle")}
+                >
+                  Reset
+                </SecondaryButton>
+              </div>
+            )}
+
+            {/* DONE */}
+            {analysisStatus === "done" && (
+              <div
+                className="animate-slide-up"
+                style={{
+                  background: "var(--green-light)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "12px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--green)",
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span>✓</span> n8n response received — results
+                  below
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* ── RESULTS ── */}
+          {analysisStatus === "done" && analysisData && (
+            <div className="animate-slide-up">
+
+              {/* 1. Executive Summary */}
+              {analysisData?.executive_summary && (
+                <Card style={{ marginBottom: 14 }}>
+                  <SectionTitle>Executive Summary</SectionTitle>
+                  <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text-body)" }}>
+                    {analysisData.executive_summary}
+                  </div>
+                </Card>
+              )}
+
+              {/* 2. Competitor Ads Table */}
+              {(analysisData?.competitors_table?.length > 0) && (
+                <Card style={{ marginBottom: 14 }}>
+                  <SectionTitle>Competitor Ads</SectionTitle>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "var(--surface)" }}>
+                          {["Name", "Ads", "Score", "Threat", "Angle", "Hook"].map((h) => (
+                            <th key={h} style={{
+                              padding: "9px 12px",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              fontSize: 11,
+                              color: "var(--text-muted)",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              borderBottom: "1px solid var(--border)",
+                              whiteSpace: "nowrap",
+                            }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysisData.competitors_table.map((row, i) => (
+                          <tr key={i} style={{ borderBottom: "0.5px solid var(--border-light)" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface)"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                          >
+                            <td style={{ padding: "10px 12px", fontWeight: 500, color: "var(--text)" }}>{row?.name}</td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-body)" }}>{row?.ads}</td>
+                            <td style={{ padding: "10px 12px" }}>
+                              <span style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                borderRadius: "var(--radius-pill)",
+                                fontSize: 11,
+                                fontWeight: 600,
+                                background: row?.score >= 75 ? "var(--green-light)" : row?.score >= 50 ? "var(--amber-light)" : "var(--red-error-bg)",
+                                color: row?.score >= 75 ? "var(--green)" : row?.score >= 50 ? "var(--amber)" : "var(--red-dark)",
+                              }}>{row?.score}</span>
+                            </td>
+                            <td style={{ padding: "10px 12px" }}>
+                              <Badge
+                                text={row?.threat}
+                                color={row?.threat === "High" ? "var(--red-dark)" : row?.threat === "Medium" ? "var(--amber)" : "var(--green)"}
+                                bg={row?.threat === "High" ? "var(--red-error-bg)" : row?.threat === "Medium" ? "var(--amber-light)" : "var(--green-light)"}
+                              />
+                            </td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-body)" }}>{row?.angle}</td>
+                            <td style={{ padding: "10px 12px", color: "var(--purple)", fontStyle: "italic" }}>&ldquo;{row?.hook}&rdquo;</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+
+              {/* 3. Top Hook Patterns Table */}
+              {(analysisData?.hooks_table?.length > 0) && (
+                <Card style={{ marginBottom: 14 }}>
+                  <SectionTitle>Top Hook Patterns</SectionTitle>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "var(--surface)" }}>
+                          {["Pattern", "Example", "Reason", "Score"].map((h) => (
+                            <th key={h} style={{
+                              padding: "9px 12px",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              fontSize: 11,
+                              color: "var(--text-muted)",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              borderBottom: "1px solid var(--border)",
+                              whiteSpace: "nowrap",
+                            }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysisData.hooks_table.map((row, i) => (
+                          <tr key={i} style={{ borderBottom: "0.5px solid var(--border-light)" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface)"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                          >
+                            <td style={{ padding: "10px 12px", fontWeight: 500, color: "var(--text)", whiteSpace: "nowrap" }}>{row?.pattern}</td>
+                            <td style={{ padding: "10px 12px", color: "var(--purple)", fontStyle: "italic" }}>&ldquo;{row?.example}&rdquo;</td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-body)", lineHeight: 1.5 }}>{row?.reason}</td>
+                            <td style={{ padding: "10px 12px" }}>
+                              <span style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                borderRadius: "var(--radius-pill)",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                background: "var(--purple-light)",
+                                color: "var(--purple)",
+                              }}>{row?.score}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+
+              {/* 4 + 5. Market Insights & Gap Opportunities — side by side */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+
+                {/* 4. Market Insights Table */}
+                {(analysisData?.market_insights_table?.length > 0) && (
+                  <Card>
+                    <SectionTitle>Market Insights</SectionTitle>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "var(--surface)" }}>
+                          {["Field", "Value"].map((h) => (
+                            <th key={h} style={{
+                              padding: "8px 10px",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              fontSize: 11,
+                              color: "var(--text-muted)",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              borderBottom: "1px solid var(--border)",
+                            }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysisData.market_insights_table.map((row, i) => (
+                          <tr key={i} style={{ borderBottom: "0.5px solid var(--border-light)" }}>
+                            <td style={{ padding: "9px 10px", fontWeight: 500, color: "var(--text-muted)", fontSize: 11 }}>{row?.field}</td>
+                            <td style={{ padding: "9px 10px", fontWeight: 500, color: "var(--text)" }}>{row?.value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Card>
+                )}
+
+                {/* 5. Gap Opportunities Table */}
+                {(analysisData?.gaps_table?.length > 0) && (
+                  <Card>
+                    <SectionTitle>Gap Opportunities</SectionTitle>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "var(--surface)" }}>
+                          {["Gap", "Opportunity", "Priority", "Impact"].map((h) => (
+                            <th key={h} style={{
+                              padding: "8px 10px",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              fontSize: 11,
+                              color: "var(--text-muted)",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              borderBottom: "1px solid var(--border)",
+                              whiteSpace: "nowrap",
+                            }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysisData.gaps_table.map((row, i) => (
+                          <tr key={i} style={{ borderBottom: "0.5px solid var(--border-light)" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface)"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                          >
+                            <td style={{ padding: "9px 10px", fontWeight: 500, color: "var(--text)" }}>{row?.gap}</td>
+                            <td style={{ padding: "9px 10px", color: "var(--text-body)", lineHeight: 1.5 }}>{row?.opportunity}</td>
+                            <td style={{ padding: "9px 10px" }}>
+                              <Badge
+                                text={row?.priority}
+                                color={row?.priority === "High" ? "var(--red-dark)" : row?.priority === "Medium" ? "var(--amber)" : "var(--green)"}
+                                bg={row?.priority === "High" ? "var(--red-error-bg)" : row?.priority === "Medium" ? "var(--amber-light)" : "var(--green-light)"}
+                              />
+                            </td>
+                            <td style={{ padding: "9px 10px", color: "var(--blue)", fontSize: 11 }}>{row?.impact}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Card>
+                )}
+              </div>
+
+              {/* Raw response fallback — shown when none of the expected tables are present */}
+              {!analysisData?.competitors_table?.length &&
+                !analysisData?.hooks_table?.length &&
+                !analysisData?.market_insights_table?.length &&
+                !analysisData?.gaps_table?.length && (
+                <Card style={{ marginBottom: 14 }}>
+                  <SectionTitle>n8n Raw Response</SectionTitle>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
+                    n8n responded but no table data was found. Raw output:
+                  </div>
+                  <pre style={{
+                    fontSize: 11,
+                    background: "var(--surface)",
+                    borderRadius: "var(--radius-md)",
+                    padding: 12,
+                    overflow: "auto",
+                    maxHeight: 300,
+                    margin: 0,
+                    color: "var(--text)",
+                    lineHeight: 1.6,
+                  }}>
+                    {JSON.stringify(analysisData, null, 2)}
+                  </pre>
+                </Card>
+              )}
+
+              <div>
+                <button
+                  onClick={createAdFromAnalysis}
+                  disabled={adStatus === "generating" || adStatus === "waiting"}
+                  style={{
+                    padding: "11px 18px",
+                    borderRadius: "var(--radius-md)",
+                    border: "none",
+                    background: adStatus === "generating" || adStatus === "waiting" ? "var(--purple-light)" : "var(--purple)",
+                    color: adStatus === "generating" || adStatus === "waiting" ? "var(--purple)" : "#fff",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: adStatus === "generating" || adStatus === "waiting" ? "not-allowed" : "pointer",
+                    opacity: adStatus === "generating" || adStatus === "waiting" ? 0.7 : 1,
+                    fontFamily: "inherit",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "background 0.2s",
+                  }}
+                >
+                  {adStatus === "generating" ? <><Spinner size={12} color="var(--purple)" /> Sending to n8n...</> :
+                   adStatus === "waiting"    ? <><Spinner size={12} color="var(--purple)" /> Generating ad...</> :
+                   "Create ad based on this analysis →"}
+                </button>
+                {adStatus === "waiting" && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--amber)" }}>
+                    n8n is generating your ad using the analysis data. Results will appear in the Create Ad tab when ready.
+                  </div>
+                )}
+                {adStatus === "error" && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--red-strong)" }}>
+                    Could not reach n8n: {webhookError}. Please try again.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          CREATE AD
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "create" && (
+        <div className="animate-fade-in">
+          {!analysisData && (
+            <div
+              style={{
+                background: "var(--amber-light)",
+                border: "0.5px solid var(--amber)",
+                borderRadius: "var(--radius-md)",
+                padding: 14,
+                marginBottom: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--amber)",
+                  fontWeight: 500,
+                  marginBottom: 4,
+                }}
+              >
+                No competitor analysis yet
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--amber-dark)",
+                }}
+              >
+                Run competitor analysis first so AI can create a
+                better ad based on real data.
+              </div>
+            </div>
+          )}
+
+          <Card style={{ marginBottom: 14 }}>
+            <SectionTitle>Select topic</SectionTitle>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 20,
+              }}
+            >
+              {TOPICS.map((t) => (
+                <button
+                  key={t}
+                  style={topicBtnStyle(t)}
+                  onClick={() => setSelectedTopic(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <SectionTitle>n8n Workflow Steps</SectionTitle>
+            <WorkflowStep
+              step="1"
+              label="Topic + analysis data sent to n8n"
+              sub="Competitor brief + topic = better ad"
+              active={adStatus === "idle"}
+              done={adStatus !== "idle"}
+            />
+            <WorkflowStep
+              step="2"
+              label="Claude generates ad copy"
+              sub="Using top hook patterns and ready templates"
+              active={adStatus === "waiting"}
+              done={adStatus === "done"}
+            />
+            <WorkflowStep
+              step="3"
+              label="Runway ML video / DALL-E image"
+              sub="15-sec reel or static visual"
+              active={adStatus === "waiting"}
+              done={adStatus === "done"}
+            />
+            <WorkflowStep
+              step="4"
+              label="Ready ad sent to Approval tab"
+              sub="You confirm budget & launch"
+              active={false}
+              done={adStatus === "done"}
+            />
+
+            <div>
+              <button
+                onClick={createAdFromAnalysis}
+                disabled={adStatus === "generating" || adStatus === "waiting"}
+                style={{
+                  width: "100%",
+                  padding: "11px 18px",
+                  borderRadius: "var(--radius-md)",
+                  border: "none",
+                  background: adStatus === "generating" || adStatus === "waiting" ? "var(--surface)" : "var(--purple)",
+                  color: adStatus === "generating" || adStatus === "waiting" ? "var(--purple)" : "#fff",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: adStatus === "generating" || adStatus === "waiting" ? "not-allowed" : "pointer",
+                  opacity: adStatus === "generating" || adStatus === "waiting" ? 0.7 : 1,
+                  fontFamily: "inherit",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  transition: "background 0.2s",
+                }}
+              >
+                {adStatus === "generating" ? <><Spinner size={12} color="var(--purple)" /> Sending to n8n...</> :
+                 adStatus === "waiting"    ? <><Spinner size={12} color="var(--purple)" /> Generating ad...</> :
+                 "Generate ad — trigger n8n"}
+              </button>
+              {adStatus === "waiting" && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--amber)" }}>
+                  n8n is generating your ad. Results will appear here when ready.
+                </div>
+              )}
+              {adStatus === "error" && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--red-strong)" }}>
+                  Could not reach n8n: {webhookError}. Please try again.
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {adStatus === "waiting" && !adData && (
+            <Card style={{ marginBottom: 14 }}>
+              <div
+                style={{
+                  background: "var(--amber-light)",
+                  borderRadius: "var(--radius-md)",
+                  padding: 14,
+                  marginBottom: 12,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--amber)",
+                    fontWeight: 500,
+                    marginBottom: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <Spinner size={12} color="var(--amber)" />
+                  n8n generating ad — please wait
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--amber-dark)",
+                  }}
+                >
+                  When Claude + Runway ML complete, n8n will POST
+                  the ad here.
+                </div>
+              </div>
+              <SecondaryButton onClick={simulateAdResponse}>
+                ⚙ Simulate n8n ad response — UI testing only
+              </SecondaryButton>
+            </Card>
+          )}
+
+          {/* Top hook patterns reference — shown when analysis data available */}
+          {adStatus === "idle" && analysisData?.hooks_table?.length > 0 && (
+            <Card style={{ marginBottom: 14 }}>
+              <SectionTitle>Top Hook Patterns from Analysis</SectionTitle>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {(analysisData.hooks_table || []).map((row, idx) => (
+                  <div key={idx} style={{ padding: "10px 12px", background: "var(--surface)", borderRadius: "var(--radius-md)", fontSize: 12, lineHeight: 1.5 }}>
+                    <div style={{ fontWeight: 600, color: "var(--purple)", marginBottom: 3 }}>{row?.pattern}</div>
+                    <div style={{ color: "var(--text-body)", fontStyle: "italic" }}>&ldquo;{row?.example}&rdquo;</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {adData && (
+            <Card>
+              <SectionTitle>
+                Generated ad — {adData.topic}
+              </SectionTitle>
+              <div style={{ marginBottom: 14 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-dim)",
+                    marginBottom: 4,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    fontWeight: 500,
+                  }}
+                >
+                  Headline
+                </div>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {adData.headline}
+                </div>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-dim)",
+                    marginBottom: 4,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    fontWeight: 500,
+                  }}
+                >
+                  Body
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text-body)",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {adData.body}
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  marginBottom: 18,
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--text-dim)",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      fontWeight: 500,
+                    }}
+                  >
+                    CTA
+                  </div>
+                  <Badge
+                    text={adData.cta}
+                    color="var(--green)"
+                    bg="var(--green-light)"
+                  />
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--text-dim)",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Format
+                  </div>
+                  <Badge
+                    text={adData.format}
+                    color="var(--blue)"
+                    bg="var(--blue-light)"
+                  />
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--text-dim)",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Platform
+                  </div>
+                  <Badge
+                    text={adData.platform}
+                    color="var(--purple)"
+                    bg="var(--purple-light)"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setApproved(false);
+                  setTab("approval");
+                }}
+                style={{
+                  width: "100%",
+                  background: "var(--green)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  transition:
+                    "background 0.2s, transform 0.15s, box-shadow 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#0C5A47";
+                  e.currentTarget.style.transform =
+                    "translateY(-1px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 16px rgba(15,110,86,0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    "var(--green)";
+                  e.currentTarget.style.transform =
+                    "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                Send to approval →
+              </button>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          APPROVAL
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "approval" && (
+        <div className="animate-fade-in">
+
+          {/* No ads yet */}
+          {(!adData || !adData.ad_scripts || adData.ad_scripts.length === 0) && (
+            <div style={{ textAlign: "center", padding: "32px 16px",
+              color: "var(--text-muted)", fontSize: 13 }}>
+              No ads waiting for approval. Generate ads first in the Create Ad tab.
+            </div>
+          )}
+
+          {adData?.ad_scripts?.length > 0 && (
+            <>
+              {/* Summary metric cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)",
+                gap: 8, marginBottom: 14 }}>
+                {[
+                  { label: "Pending",   count: countByStatus("pending"),   bg: "#F1EFE8", color: "#5F5E5A" },
+                  { label: "Approved",  count: countByStatus("approved"),  bg: "#E1F5EE", color: "#0F6E56" },
+                  { label: "Scheduled", count: countByStatus("scheduled"), bg: "#FAEEDA", color: "#854F0B" },
+                  { label: "Rejected",  count: countByStatus("rejected"),  bg: "#FCEBEB", color: "#A32D2D" },
+                ].map(c => (
+                  <div key={c.label} style={{ background: c.bg, borderRadius: 10, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: c.color,
+                      textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+                      {c.label}
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 500, color: c.color }}>{c.count}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Filter tabs */}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                {[
+                  { key: "all",       label: `All (${(adData.ad_scripts || []).length})` },
+                  { key: "pending",   label: `Pending (${countByStatus("pending")})` },
+                  { key: "approved",  label: `Approved (${countByStatus("approved")})` },
+                  { key: "scheduled", label: `Scheduled (${countByStatus("scheduled")})` },
+                  { key: "rejected",  label: `Rejected (${countByStatus("rejected")})` },
+                ].map(t => (
+                  <button key={t.key} onClick={() => setApprovalFilter(t.key)} style={{
+                    padding: "6px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontWeight: approvalFilter === t.key ? 500 : 400,
+                    border: approvalFilter === t.key ? "1.5px solid #534AB7" : "0.5px solid var(--border)",
+                    background: approvalFilter === t.key ? "#EEEDFE" : "transparent",
+                    color: approvalFilter === t.key ? "#534AB7" : "var(--text-muted)",
+                  }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Bulk action buttons */}
+              {countByStatus("pending") > 0 && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                  <button onClick={approveAllPending} style={{ fontSize: 12, padding: "7px 14px",
+                    borderRadius: 8, border: "none", background: "#0F6E56",
+                    color: "white", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}>
+                    Approve all pending
+                  </button>
+                  <button onClick={rejectAllPending} style={{ fontSize: 12, padding: "7px 14px",
+                    borderRadius: 8, border: "0.5px solid #E24B4A",
+                    background: "#FCEBEB", color: "#A32D2D", cursor: "pointer",
+                    fontWeight: 500, fontFamily: "inherit" }}>
+                    Reject all pending
+                  </button>
+                </div>
+              )}
+
+              {/* Scheduled queue panel */}
+              {scheduledAds.length > 0 && (
+                <div style={{ background: "#FAEEDA", border: "0.5px solid #EF9F27",
+                  borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "#854F0B", marginBottom: 8 }}>
+                    Scheduled queue — {scheduledAds.length} ad{scheduledAds.length > 1 ? "s" : ""} waiting
+                  </div>
+                  {scheduledAds.map((a, i) => (
+                    <div key={a.id} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "5px 0",
+                      borderBottom: i < scheduledAds.length - 1 ? "0.5px solid rgba(239,159,39,0.3)" : "none",
+                      fontSize: 12, color: "#633806",
+                    }}>
+                      <span>{a.topic}</span>
+                      <span style={{ fontWeight: 500 }}>{a.scheduledAt}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Ad cards */}
+              {(adData.ad_scripts || [])
+                .filter(ad => approvalFilter === "all" || getAdStatus(ad.id) === approvalFilter)
+                .map(ad => {
+                  const status     = getAdStatus(ad.id);
+                  const isActioned = status !== "pending";
+                  const schedInfo  = scheduledAds.find(a => a.id === ad.id);
+                  const dateVal    = scheduleDates[ad.id]?.date || "";
+                  const timeVal    = scheduleDates[ad.id]?.time || "09:00";
+                  const borderColor =
+                    status === "approved"  ? "#5DCAA5" :
+                    status === "rejected"  ? "#F09595" :
+                    status === "scheduled" ? "#EF9F27" :
+                    "var(--border)";
+
+                  return (
+                    <div key={ad.id} style={{
+                      background: "var(--card-bg)",
+                      border: `1px solid ${borderColor}`,
+                      borderRadius: 12, padding: 16, marginBottom: 12,
+                      opacity: status === "rejected" ? 0.55 : 1,
+                      transition: "all 0.2s",
+                    }}>
+
+                      {/* Card header */}
+                      <div style={{ display: "flex", justifyContent: "space-between",
+                        alignItems: "flex-start", marginBottom: 10 }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 13, fontWeight: 500 }}>{ad.topic}</span>
+                            <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, fontWeight: 500,
+                              background: ad.ad_type === "video" ? "#EEEDFE" : "#E6F1FB",
+                              color: ad.ad_type === "video" ? "#534AB7" : "#185FA5" }}>
+                              {ad.ad_type === "video" ? "Video" : "Image"}
+                            </span>
+                            {ad.framework && (
+                              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20,
+                                background: "#F1EFE8", color: "#5F5E5A", fontWeight: 500 }}>
+                                {ad.framework}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                            {ad.target_audience}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 10px",
+                          borderRadius: 20, whiteSpace: "nowrap",
+                          background:
+                            status === "approved"  ? "#E1F5EE" :
+                            status === "rejected"  ? "#FCEBEB" :
+                            status === "scheduled" ? "#FAEEDA" : "#F1EFE8",
+                          color:
+                            status === "approved"  ? "#0F6E56" :
+                            status === "rejected"  ? "#A32D2D" :
+                            status === "scheduled" ? "#854F0B" : "#5F5E5A",
+                          border: `1px solid ${borderColor}`,
+                        }}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </span>
+                      </div>
+
+                      {/* Media preview */}
+                      {(ad.image_url || ad.video_url) && (
+                        <div style={{ background: "var(--surface)", borderRadius: 8,
+                          height: 100, marginBottom: 10, display: "flex",
+                          alignItems: "center", justifyContent: "center",
+                          overflow: "hidden", position: "relative" }}>
+                          {ad.image_url && (
+                            <img src={ad.image_url} alt={ad.topic}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          )}
+                          {ad.ad_type === "video" && (
+                            <div style={{ position: "absolute", background: "rgba(0,0,0,0.35)",
+                              borderRadius: "50%", width: 32, height: 32,
+                              display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <div style={{ width: 0, height: 0,
+                                borderTop: "7px solid transparent",
+                                borderBottom: "7px solid transparent",
+                                borderLeft: "12px solid white", marginLeft: 2 }} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Hook */}
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Hook</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ad.hook}</div>
+                      </div>
+
+                      {/* Body copy */}
+                      {ad.body_copy && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Body copy</div>
+                          <div style={{ fontSize: 12, color: "var(--text-body)", lineHeight: 1.5 }}>
+                            {ad.body_copy}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Script for video */}
+                      {ad.script && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Script</div>
+                          <div style={{ fontSize: 11, fontFamily: "monospace", lineHeight: 1.6,
+                            background: "var(--surface)", padding: "8px 10px", borderRadius: 6,
+                            color: "var(--text-body)" }}>
+                            {ad.script}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* CTA */}
+                      <div style={{ marginBottom: 12 }}>
+                        <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20,
+                          background: "#E1F5EE", color: "#0F6E56",
+                          border: "0.5px solid #5DCAA5", fontWeight: 500 }}>
+                          CTA: {ad.cta}
+                        </span>
+                      </div>
+
+                      {/* Schedule picker */}
+                      {schedulePickerOpen === ad.id && (
+                        <div style={{ background: "#FAEEDA", border: "0.5px solid #EF9F27",
+                          borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                          <div style={{ fontSize: 12, fontWeight: 500, color: "#854F0B", marginBottom: 8 }}>
+                            Schedule this ad
+                          </div>
+                          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 11, color: "#854F0B", marginBottom: 3 }}>Date</div>
+                              <input type="date" value={dateVal}
+                                onChange={e => setScheduleDates(prev => ({
+                                  ...prev, [ad.id]: { ...prev[ad.id], date: e.target.value },
+                                }))}
+                                style={{ width: "100%", fontSize: 12, padding: "6px 8px",
+                                  borderRadius: 6, border: "1px solid #EF9F27",
+                                  background: "white", boxSizing: "border-box" }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 11, color: "#854F0B", marginBottom: 3 }}>Time</div>
+                              <input type="time" value={timeVal}
+                                onChange={e => setScheduleDates(prev => ({
+                                  ...prev, [ad.id]: { ...prev[ad.id], time: e.target.value },
+                                }))}
+                                style={{ width: "100%", fontSize: 12, padding: "6px 8px",
+                                  borderRadius: 6, border: "1px solid #EF9F27",
+                                  background: "white", boxSizing: "border-box" }} />
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => scheduleAd(ad)}
+                              style={{ flex: 1, padding: "7px", borderRadius: 6, border: "none",
+                                background: "#854F0B", color: "white",
+                                fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                              Confirm schedule
+                            </button>
+                            <button onClick={() => setSchedulePickerOpen(null)}
+                              style={{ padding: "7px 12px", borderRadius: 6,
+                                border: "0.5px solid #EF9F27", background: "white",
+                                color: "#854F0B", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Scheduled time display */}
+                      {status === "scheduled" && schedInfo?.scheduledAt && (
+                        <div style={{ background: "#FAEEDA", borderRadius: 6,
+                          padding: "6px 10px", marginBottom: 10,
+                          fontSize: 12, color: "#854F0B" }}>
+                          Scheduled for: <strong>{schedInfo.scheduledAt}</strong>
+                        </div>
+                      )}
+
+                      {/* Action buttons */}
+                      {!isActioned ? (
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => approveAd(ad)}
+                            style={{ flex: 1, padding: 9, borderRadius: 8, border: "none",
+                              background: "#0F6E56", color: "white",
+                              fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                            Approve
+                          </button>
+                          <button onClick={() => setSchedulePickerOpen(
+                              schedulePickerOpen === ad.id ? null : ad.id
+                            )}
+                            style={{ flex: 1, padding: 9, borderRadius: 8,
+                              border: "0.5px solid #EF9F27", background: "#FAEEDA",
+                              color: "#854F0B", fontSize: 13, fontWeight: 500,
+                              cursor: "pointer", fontFamily: "inherit" }}>
+                            Schedule
+                          </button>
+                          <button onClick={() => rejectAd(ad.id)}
+                            style={{ flex: 1, padding: 9, borderRadius: 8,
+                              border: "0.5px solid #E24B4A", background: "#FCEBEB",
+                              color: "#A32D2D", fontSize: 13, fontWeight: 500,
+                              cursor: "pointer", fontFamily: "inherit" }}>
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => undoAction(ad.id)}
+                            style={{ padding: "7px 14px", borderRadius: 8,
+                              border: "0.5px solid var(--border)",
+                              background: "var(--surface)",
+                              color: "var(--text-muted)", fontSize: 12,
+                              cursor: "pointer", fontFamily: "inherit" }}>
+                            Undo
+                          </button>
+                          {status === "scheduled" && (
+                            <button onClick={() => setSchedulePickerOpen(ad.id)}
+                              style={{ padding: "7px 14px", borderRadius: 8,
+                                border: "0.5px solid #EF9F27", background: "#FAEEDA",
+                                color: "#854F0B", fontSize: 12,
+                                cursor: "pointer", fontFamily: "inherit" }}>
+                              Change time
+                            </button>
+                          )}
+                          {status === "approved" && (
+                            <button onClick={() => setTab("campaigns")}
+                              style={{ padding: "7px 14px", borderRadius: 8, border: "none",
+                                background: "#534AB7", color: "white",
+                                fontSize: 12, fontWeight: 500,
+                                cursor: "pointer", fontFamily: "inherit" }}>
+                              Set budget &amp; launch
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          LIVE CAMPAIGNS
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "campaigns" && (
+        <div className="animate-fade-in">
+          {campaigns.length === 0 ? (
+            <Card>
+              <EmptyState
+                title="No live campaigns"
+                sub="Approve and launch an ad from the Approval tab."
+              />
+            </Card>
+          ) : (
+            campaigns.map((c, idx) => {
+              const stopped = stoppedIds.includes(c.id);
+              return (
+                <Card
+                  key={c.id}
+                  style={{
+                    marginBottom: 12,
+                    animationDelay: `${idx * 0.05}s`,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          marginBottom: 3,
+                        }}
+                      >
+                        {c.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        {c.platform} · {c.budget} · {c.duration}
+                      </div>
+                    </div>
+                    <Badge
+                      text={
+                        stopped
+                          ? "Stopped"
+                          : c.status === "launching"
+                          ? "Launching..."
+                          : "Live"
+                      }
+                      color={
+                        stopped
+                          ? "var(--red-dark)"
+                          : c.status === "launching"
+                          ? "var(--amber)"
+                          : "var(--green)"
+                      }
+                      bg={
+                        stopped
+                          ? "var(--red-error-bg)"
+                          : c.status === "launching"
+                          ? "var(--amber-light)"
+                          : "var(--green-light)"
+                      }
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(4, 1fr)",
+                      gap: 12,
+                      marginBottom: 14,
+                      padding: "12px 0",
+                      borderTop:
+                        "0.5px solid var(--border-light)",
+                      borderBottom:
+                        "0.5px solid var(--border-light)",
+                    }}
+                  >
+                    {[
+                      ["Spend", c.spend],
+                      ["CTR", c.ctr],
+                      ["Clicks", c.clicks],
+                      ["Leads", c.leads],
+                    ].map(([k, v]) => (
+                      <div key={k}>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--text-dim)",
+                            marginBottom: 3,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {k}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {v}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {!stopped && (
+                    <button
+                      onClick={() => stopCampaign(c.id, c.name)}
+                      disabled={stopStatus === "stopping"}
+                      style={{
+                        fontSize: 12,
+                        padding: "8px 18px",
+                        borderRadius: "var(--radius-sm)",
+                        border: "0.5px solid var(--red)",
+                        background: stopStatus === "stopping" ? "var(--surface)" : "var(--red-light)",
+                        color: "var(--red)",
+                        cursor: stopStatus === "stopping" ? "not-allowed" : "pointer",
+                        opacity: stopStatus === "stopping" ? 0.6 : 1,
+                        fontWeight: 500,
+                        fontFamily: "inherit",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        transition: "background 0.15s, transform 0.15s",
+                      }}
+                      onMouseEnter={(e) => { if (stopStatus !== "stopping") { e.currentTarget.style.background = "#F5DDD4"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = stopStatus === "stopping" ? "var(--surface)" : "var(--red-light)"; e.currentTarget.style.transform = "translateY(0)"; }}
+                    >
+                      {stopStatus === "stopping"
+                        ? <><Spinner size={10} color="var(--red)" /> Stopping...</>
+                        : "Stop campaign — n8n Meta API call"}
+                    </button>
+                  )}
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          SOCIAL POSTS
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "social" && (
+        <div className="animate-fade-in">
+          <Card>
+            <SectionTitle>
+              Upcoming events &amp; special days — auto-detected by n8n
+            </SectionTitle>
+            {[
+              { event: "Halloween",               date: "Thu 31 Oct", type: "Holiday",          status: "scheduled" },
+              { event: "Friday the 13th",          date: "Fri 13 Dec", type: "Tattoo tradition", status: "scheduled" },
+              { event: "Black Friday",             date: "Fri 29 Nov", type: "Discount day",     status: "draft" },
+              { event: "Berlin Tattoo Convention", date: "Sat 9 Nov",  type: "Local event",      status: "draft" },
+            ].map((e, i, arr) => {
+              const isActive = socialActiveEvt === e.event && (socialStatus === "generating" || socialStatus === "waiting");
+              const isDone   = socialActiveEvt === e.event && socialStatus === "done";
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 0",
+                    borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-light)" : "none",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{e.event}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{e.date} · {e.type}</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Badge
+                      text={isDone ? "Posted" : e.status}
+                      color={isDone ? "var(--green)" : e.status === "scheduled" ? "var(--green)" : "var(--amber)"}
+                      bg={isDone ? "var(--green-light)" : e.status === "scheduled" ? "var(--green-light)" : "var(--amber-light)"}
+                    />
+                    <button
+                      onClick={() => generateSocialPost(e.event)}
+                      disabled={isActive || isDone}
+                      style={{
+                        fontSize: 11,
+                        padding: "5px 12px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--purple)",
+                        background: isActive || isDone ? "var(--purple-light)" : "transparent",
+                        color: "var(--purple)",
+                        cursor: isActive || isDone ? "not-allowed" : "pointer",
+                        opacity: isActive || isDone ? 0.6 : 1,
+                        fontWeight: 500,
+                        fontFamily: "inherit",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        transition: "background 0.15s",
+                      }}
+                    >
+                      {isActive ? <><Spinner size={9} color="var(--purple)" /> Generating...</> :
+                       isDone   ? "✓ Done" :
+                       "Generate post"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {socialStatus === "error" && (
+              <div style={{ marginTop: 10, fontSize: 12, color: "var(--red-strong)" }}>
+                Could not reach n8n: {webhookError}. Please try again.
+              </div>
+            )}
+
+            {analysisData?.gaps_table?.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <SectionTitle>Top Opportunities from Analysis</SectionTitle>
+                <div style={{ background: "var(--purple-light)", padding: 14, borderRadius: "var(--radius-md)" }}>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--purple-dark)", lineHeight: 1.6 }}>
+                    {(analysisData.gaps_table || []).map((row, idx) => (
+                      <li key={idx} style={{ marginBottom: 4 }}><strong>{row?.gap}:</strong> {row?.opportunity}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          REPORTS
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "reports" && (
+        <div className="animate-fade-in">
+          <Card>
+            <EmptyState
+              title="No report available yet"
+              sub="n8n generates a report automatically every 2 weeks and delivers it here. First report after 14 days."
+            />
+            <div style={{ marginTop: 16 }}>
+              <button
+                onClick={generateReport}
+                disabled={reportStatus === "generating" || reportStatus === "waiting"}
+                style={{
+                  padding: "11px 18px",
+                  borderRadius: "var(--radius-md)",
+                  border: "none",
+                  background: reportStatus === "done" ? "var(--green)" : reportStatus === "generating" || reportStatus === "waiting" ? "var(--surface)" : "var(--purple)",
+                  color: reportStatus === "generating" || reportStatus === "waiting" ? "var(--purple)" : "#fff",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: reportStatus === "generating" || reportStatus === "waiting" ? "not-allowed" : "pointer",
+                  opacity: reportStatus === "generating" || reportStatus === "waiting" ? 0.7 : 1,
+                  fontFamily: "inherit",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  transition: "background 0.2s",
+                }}
+              >
+                {reportStatus === "generating" || reportStatus === "waiting"
+                  ? <><Spinner size={12} color="var(--purple)" /> Generating report...</>
+                  : reportStatus === "done"
+                  ? "✓ Report triggered — check your inbox"
+                  : "Manual report trigger — n8n webhook"}
+              </button>
+              {reportStatus === "error" && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--red-strong)" }}>
+                  Could not reach n8n: {webhookError}. Please try again.
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
