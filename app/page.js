@@ -86,6 +86,10 @@ export default function Dashboard() {
   const [schedulePickerOpen,setSchedulePickerOpen] = useState(null);
   const [scheduleDates,     setScheduleDates]      = useState({});
 
+  // ── Ad Videos state ──
+  const [adVideos, setAdVideos] = useState([]);
+  const [adVideosLoading, setAdVideosLoading] = useState(false);
+
   // ── Supabase reports state ──
   const [sbRows, setSbRows] = useState([]);
   const [sbLoading, setSbLoading] = useState(true);
@@ -120,6 +124,7 @@ export default function Dashboard() {
       setSbLoading(false);
     }
     fetchReports();
+    fetchAdVideos();
 
     // Load persisted analysis data
     const savedAnalysis = localStorage.getItem("lastAnalysisData");
@@ -207,6 +212,39 @@ export default function Dashboard() {
       videos[idx] = { ...videos[idx], [field]: value };
       return { ...cfg, videos };
     });
+  }
+
+  async function fetchAdVideos() {
+    setAdVideosLoading(true);
+    try {
+      const buckets = ["AD1", "AD2", "AD3"];
+      const allFiles = [];
+      for (const bucket of buckets) {
+        const { data, error } = await supabase.storage.from(bucket).list("", {
+          limit: 100,
+          sortBy: { column: "created_at", order: "desc" },
+        });
+        if (!error && data) {
+          data.forEach((file) => {
+            if (/\.(mp4|mov|webm)$/i.test(file.name)) {
+              const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(file.name);
+              allFiles.push({
+                key: `${bucket}/${file.name}`,
+                bucket,
+                name: file.name,
+                created_at: file.created_at || file.updated_at || "",
+                url: urlData.publicUrl,
+              });
+            }
+          });
+        }
+      }
+      allFiles.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setAdVideos(allFiles);
+    } catch (err) {
+      console.error("Failed to fetch ad videos", err);
+    }
+    setAdVideosLoading(false);
   }
 
   async function handleTriggerAds(reportId, reportData) {
@@ -1671,53 +1709,86 @@ export default function Dashboard() {
 
           {/* ── AD PREVIEWS ── */}
           <div style={{ marginTop: 24 }}>
-            <SectionTitle>Ad Previews</SectionTitle>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 16,
-              }}
-            >
-              {[
-                { id: "AD1", label: "Ad 1", file: "data1.mp4" },
-                { id: "AD2", label: "Ad 2", file: "data2.mp4" },
-                { id: "AD3", label: "Ad 3", file: "data3.mp4" },
-              ].map((ad) => (
-                <Card key={ad.id} style={{ padding: 12 }}>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "var(--text-muted)",
-                      marginBottom: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {ad.label}
-                  </div>
-                  <div
-                    style={{
-                      background: "var(--surface)",
-                      borderRadius: "var(--radius-md)",
-                      aspectRatio: "9/16",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <video
-                      src={`https://nidoqmcxmlyiovdktzxg.supabase.co/storage/v1/object/public/${ad.id}/${ad.file}`}
-                      controls
-                      autoPlay={false}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  </div>
-                </Card>
-              ))}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <SectionTitle style={{ marginBottom: 0 }}>Ad Previews</SectionTitle>
+              <button
+                onClick={fetchAdVideos}
+                disabled={adVideosLoading}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 14px", borderRadius: "var(--radius-md)",
+                  border: "0.5px solid var(--border)", background: "var(--surface)",
+                  color: "var(--text-muted)", fontSize: 12, fontWeight: 500,
+                  cursor: adVideosLoading ? "not-allowed" : "pointer",
+                  fontFamily: "inherit", opacity: adVideosLoading ? 0.6 : 1,
+                  transition: "opacity 0.2s",
+                }}
+              >
+                <span style={{ display: "inline-block", animation: adVideosLoading ? "spin 1s linear infinite" : "none" }}>↻</span>
+                {adVideosLoading ? "Loading..." : "Refresh"}
+              </button>
             </div>
+
+            {adVideosLoading && adVideos.length === 0 && (
+              <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)", fontSize: 13 }}>
+                <Spinner size={16} color="var(--purple)" /> Loading videos...
+              </div>
+            )}
+
+            {!adVideosLoading && adVideos.length === 0 && (
+              <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)", fontSize: 13 }}>
+                No videos found. Generate ads first, then click Refresh.
+              </div>
+            )}
+
+            {adVideos.length > 0 && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {adVideos.map((ad, idx) => (
+                  <Card key={ad.key} style={{ padding: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div
+                        style={{
+                          fontSize: 12, fontWeight: 600,
+                          color: "var(--text-muted)",
+                          textTransform: "uppercase", letterSpacing: "0.04em",
+                        }}
+                      >
+                        Ad {idx + 1}
+                      </div>
+                      {ad.created_at && (
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                          {new Date(ad.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        background: "var(--surface)",
+                        borderRadius: "var(--radius-md)",
+                        aspectRatio: "9/16",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <video
+                        src={ad.url}
+                        controls
+                        autoPlay={false}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
