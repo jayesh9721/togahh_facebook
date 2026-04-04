@@ -90,6 +90,7 @@ export default function Dashboard() {
   const [sbRows, setSbRows] = useState([]);
   const [sbLoading, setSbLoading] = useState(true);
   const [sbTriggeringId, setSbTriggeringId] = useState(null);
+  const [sbSessionTriggered, setSbSessionTriggered] = useState(new Set());
   const [sbToasts, setSbToasts] = useState([]);
   const [sbExpandedInsights, setSbExpandedInsights] = useState({});
   const [sbAdsConfigOpen, setSbAdsConfigOpen] = useState({});
@@ -219,7 +220,7 @@ export default function Dashboard() {
       });
       const result = await res.json();
       if (result.success) {
-        setSbRows((prev) => prev.map((r) => r.id === reportId ? { ...r, ads_workflow_triggered: true } : r));
+        setSbSessionTriggered((prev) => new Set([...prev, reportId]));
         addSbToast("Ads workflow triggered successfully!");
       } else {
         addSbToast("Failed to trigger. Try again.", "error");
@@ -2384,7 +2385,7 @@ export default function Dashboard() {
             const highCount = competitors.filter((c) => c.threat === "high").length;
             const mediumCount = competitors.filter((c) => c.threat === "medium").length;
             const gapsCount = gaps.length;
-            const triggered = row.ads_workflow_triggered;
+            const triggered = sbSessionTriggered.has(row.id);
             const isTriggering = sbTriggeringId === row.id;
             const insightsOpen = sbExpandedInsights[row.id];
             const adsConfigOpen = sbAdsConfigOpen[row.id];
