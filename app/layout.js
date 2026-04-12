@@ -8,9 +8,9 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Tattoo Studio — AI Automation Dashboard",
+  title: "HealPoint AI — Healthcare Ads Manager",
   description:
-    "AI-powered advertising and marketing automation dashboard for tattoo and piercing studios. Manage competitor analysis, ad creation, campaigns, social posts, and reports — all connected to n8n automation.",
+    "Professional AI-powered advertising and marketing automation for hospitals, clinics, and healthcare providers. Managed campaigns, competitor clinical analysis, and patient growth automation.",
 };
 
 export default function RootLayout({ children }) {

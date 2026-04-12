@@ -1,0 +1,589 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import {
+  Card,
+  SectionTitle,
+  Badge,
+  Spinner,
+  PrimaryButton,
+} from "./components";
+
+// ─── DEFAULT SCHEMA ────────────────────────────────────────────────────────────
+const DEFAULT_CONFIG = {
+  campaign: {
+    name: "treatment_pathway_q2_2026",
+    objective: "OUTCOME_SALES",
+    special_ad_categories: ["NONE"],
+    has_special_ad_categories: false,
+  },
+  ad_set: {
+    name: "Regional_Health_30-65_All",
+    dsa_payor: "HealPoint",
+    dsa_beneficiary: "HealPoint Health",
+    daily_budget: 5000,
+    age_min: 30,
+    age_max: 65,
+    gender: 0,
+    targeting_type: "world",
+    geo_targeting: ["CA"],
+    targeting_keywords: [
+      "healthcare services",
+      "medical specialists",
+      "orthopedic care",
+      "specialized clinic",
+      "preventative health",
+      "JCI accredited",
+      "affordable surgery",
+      "cardiology unit",
+      "diagnostic imaging",
+      "patient safety",
+    ],
+  },
+  ad: {
+    id: Date.now(),
+    name: "Video_PatientJourney_H1",
+    type: "video",
+    media_type: "video",
+    headline: "World-Class Surgical Care & Safety",
+    primary_text:
+      "From referral to recovery — experience JCI‑accredited excellence, state‑of‑the‑art facilities, and compassionate patient care. Watch our facility tour and book an initial consultation.",
+    website_url: "https://healpoint.ai",
+    call_to_action_type: "LEARN_MORE",
+  },
+  link_data:
+    "https://nidoqmcxmlyiovdktzxg.supabase.co/storage/v1/object/AD1/08-04-2026_11-55AM.mp4",
+};
+
+// ─── GENDER LABELS ─────────────────────────────────────────────────────────────
+const GENDER_LABELS = { 0: "All Patients", 1: "Male", 2: "Female" };
+
+export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [newCampaignName, setNewCampaignName] = useState("");
+
+  // ── Editable JSON config ──────────────────────────────────────────────────
+  const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const [configJson, setConfigJson] = useState(
+    JSON.stringify(DEFAULT_CONFIG, null, 2)
+  );
+  const [jsonError, setJsonError] = useState("");
+  const [showRawJson, setShowRawJson] = useState(false);
+
+  // ── Launch state ──────────────────────────────────────────────────────────
+  const [launching, setLaunching] = useState(false);
+  const [launchStep, setLaunchStep] = useState(0);
+  const [launchError, setLaunchError] = useState("");
+  const [launchSuccess, setLaunchSuccess] = useState(false);
+
+  const fetchCampaigns = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/meta/campaigns");
+      const data = await res.json();
+      if (res.ok) {
+        setCampaigns(data || []);
+      } else {
+        setError(data.error || "Failed to fetch campaigns");
+      }
+    } catch (e) {
+      setError("Failed to connect to API");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
+
+  useEffect(() => {
+    if (selectedAd) {
+      try {
+        let parsed = {};
+        if (typeof selectedAd["json data"] === "string") {
+          parsed = JSON.parse(selectedAd["json data"]);
+        } else if (selectedAd["json data"]) {
+          parsed = selectedAd["json data"];
+        }
+
+        const isVideo = (selectedAd.format || "").toLowerCase() === "video";
+
+        const newConfig = { ...DEFAULT_CONFIG };
+        if (parsed.campaign) newConfig.campaign = { ...DEFAULT_CONFIG.campaign, ...parsed.campaign };
+        if (parsed.ad_set) newConfig.ad_set = { ...DEFAULT_CONFIG.ad_set, ...parsed.ad_set };
+
+        if (parsed.ad) {
+          newConfig.ad = { ...DEFAULT_CONFIG.ad, ...parsed.ad };
+        } else if (parsed.ads && parsed.ads[0]) {
+          newConfig.ad = { ...DEFAULT_CONFIG.ad, ...parsed.ads[0] };
+        }
+
+        newConfig.ad.id = selectedAd.id || Date.now();
+        if (selectedAd.text) {
+          newConfig.link_data = selectedAd.text;
+        }
+        newConfig.ad.media_type = isVideo ? "video" : "image";
+        newConfig.ad.type = isVideo ? "video" : "image";
+
+        setConfig(newConfig);
+        setConfigJson(JSON.stringify(newConfig, null, 2));
+        setJsonError("");
+      } catch (e) {
+        console.error("Failed to parse selectedAd", e);
+      }
+    }
+  }, [selectedAd]);
+
+  const handleJsonChange = (raw) => {
+    setConfigJson(raw);
+    try {
+      const parsed = JSON.parse(raw);
+      setConfig(parsed);
+      setJsonError("");
+    } catch (e) {
+      setJsonError(e.message);
+    }
+  };
+
+  const setField = (section, key, value) => {
+    const next = { ...config, [section]: { ...config[section], [key]: value } };
+    setConfig(next);
+    setConfigJson(JSON.stringify(next, null, 2));
+  };
+
+  const handleCreate = async (e) => {
+    if (e) e.preventDefault();
+    if (!newCampaignName.trim()) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/meta/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCampaignName }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewCampaignName("");
+        await fetchCampaigns();
+      } else {
+        alert(data.error || "Failed to create campaign");
+      }
+    } catch (e) {
+      alert("Failed to create campaign");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleFullLaunch = async () => {
+    setLaunching(true);
+    setLaunchError("");
+    setLaunchSuccess(false);
+    setLaunchStep(1);
+
+    try {
+      const res = await fetch("/api/meta/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          schema: config,
+          campaignId: selectedId || null,
+        }),
+      });
+
+      let data;
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        throw new Error(`Server error: ${text.slice(0, 100)}...`);
+      }
+
+      if (res.ok) {
+        setLaunchStep(5);
+        setLaunchSuccess(true);
+        await fetchCampaigns();
+      } else {
+        setLaunchError(data.error || "Launch failed");
+        setLaunchStep(0);
+      }
+    } catch (e) {
+      setLaunchError(e.message);
+      setLaunchStep(0);
+    } finally {
+      setLaunching(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "ACTIVE":
+        return { color: "var(--green)", bg: "var(--green-light)" };
+      case "PAUSED":
+        return { color: "var(--amber)", bg: "var(--amber-light)" };
+      case "IN_PROCESS":
+        return { color: "var(--primary)", bg: "var(--primary-light)" };
+      default:
+        return { color: "var(--text-muted)", bg: "var(--surface)" };
+    }
+  };
+
+  const selectedCampaign = campaigns.find((c) => c.id === selectedId);
+  const isVideo = config.ad?.media_type === "video" || config.ad?.type === "video";
+  const mediaUrl = config.link_data || "";
+  const websiteHostname = (() => {
+    try { return new URL(config.ad?.website_url || "https://healpoint.ai").hostname.toUpperCase(); }
+    catch { return "HEALPOINT.AI"; }
+  })();
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, padding: "0 8px" }}>
+        <div>
+          <SectionTitle style={{ marginBottom: 6, fontSize: 24, color: "var(--text)" }}>
+            Clinical Campaign Assembly
+          </SectionTitle>
+          <div style={{ fontSize: 14, color: "var(--text-muted)", letterSpacing: "0.01em" }}>
+            Design precision treatment pathways and launch structured clinical recruitment draft pipelines.
+          </div>
+        </div>
+        {selectedId && (
+          <button
+            onClick={() => onSelect(null)}
+            style={{ padding: "10px 16px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--red)"; e.currentTarget.style.color = "var(--red)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text)"; }}
+          >
+            ✕ Reset Selection
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 28, alignItems: "start" }}>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div style={{
+              border: "14px solid #1c1c1e", borderRadius: 48, overflow: "hidden",
+              boxShadow: "0 25px 60px -12px rgba(0,0,0,0.3), 0 0 0 1px #333",
+              position: "relative", background: "#fff",
+              width: "100%", maxWidth: 320, margin: "0 auto"
+            }}>
+              <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 120, height: 30, background: "#1c1c1e", borderBottomLeftRadius: 18, borderBottomRightRadius: 18, zIndex: 10 }} />
+              <div style={{ paddingTop: 38, background: "#fff" }}>
+                <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg, var(--primary), var(--secondary))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#fff", fontWeight: 800 }}>H</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{config.ad_set?.dsa_beneficiary || "HealPoint Health"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Sponsored • Clinical Excellence</div>
+                  </div>
+                </div>
+                <div style={{ padding: "0 16px 14px", fontSize: 13, lineHeight: 1.5, color: "#111" }}>
+                  {config.ad?.primary_text || "World-class care starts today."}
+                </div>
+                <div style={{ background: "#000", aspectRatio: "1/1", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                  {mediaUrl ? (
+                    isVideo ? <video src={mediaUrl} controls style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <img src={mediaUrl} alt="Ad Preview" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  ) : (
+                    <div style={{ color: "#666", fontSize: 13, padding: 24, textAlign: "center" }}>Clinical media pending...</div>
+                  )}
+                </div>
+                <div style={{ padding: "16px 20px", borderTop: "1px solid #ebedf0", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 32 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>{websiteHostname}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{config.ad?.headline || "Learn More Today"}</div>
+                  </div>
+                  <button style={{ flexShrink: 0, padding: "8px 20px", borderRadius: 8, border: "1.5px solid #cbd5e1", background: "#f1f5f9", fontWeight: 700, fontSize: 13, color: "#1e293b" }}>
+                    {(config.ad?.call_to_action_type || "LEARN_MORE").replace(/_/g, " ")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Card style={{ padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+              <div>
+                <SectionTitle style={{ marginBottom: 4 }}>Health Operations</SectionTitle>
+                <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Historical campaigns & protocols</div>
+              </div>
+              <button
+                onClick={fetchCampaigns}
+                disabled={loading}
+                style={{
+                  background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)",
+                  padding: "8px 14px", borderRadius: 24, fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8
+                }}
+              >
+                <span className={loading ? "animate-spin" : ""}>↻</span> REFRESH
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 8 }}>
+              {loading ? (
+                <div style={{ textAlign: "center", padding: 60 }}><Spinner size={24} /></div>
+              ) : campaigns.length === 0 ? (
+                <div style={{ fontSize: 14, color: "var(--text-dim)", textAlign: "center", padding: 60, background: "var(--surface)", borderRadius: "var(--radius-lg)" }}>
+                  No active operations found.
+                </div>
+              ) : (
+                campaigns.map((c) => {
+                  const isSelected = selectedId === c.id;
+                  const { color, bg } = getStatusColor(c.effective_status);
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => onSelect(c)}
+                      style={{
+                        padding: "16px", borderRadius: "var(--radius-lg)", border: isSelected ? "2px solid var(--primary)" : "1px solid var(--border)",
+                        background: isSelected ? "var(--primary-light)" : "var(--card-bg)", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)", transform: isSelected ? "scale(1.02)" : "scale(1)",
+                        boxShadow: isSelected ? "var(--shadow-md)" : "none"
+                      }}
+                    >
+                      <div style={{ overflow: "hidden", display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: isSelected ? "var(--primary-dark)" : "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {c.name}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-dim)", fontFamily: "monospace", opacity: 0.8 }}>ID: {c.id}</div>
+                      </div>
+                      <Badge text={c.effective_status} color={color} bg={bg} />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Patient Targeting Parameters</SectionTitle>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <Row label="Geography" value={config.ad_set?.geo_targeting?.join(", ") || "—"} />
+              <Row label="Age Group" value={`${config.ad_set?.age_min || 18}–${config.ad_set?.age_max || 65}`} />
+              <Row label="Gender Demographic" value={GENDER_LABELS[config.ad_set?.gender ?? 0]} />
+              <Row label="Clinical Budget" value={`$${(config.ad_set?.daily_budget || 0) / 100} USD/day`} />
+              <Row label="DSA Payor Entities" value={config.ad_set?.dsa_payor || "—"} />
+              <Row label="Deployment Mode" value={null}>
+                <Badge
+                  text={selectedId ? "Existing Pathway" : "New Pathway"}
+                  bg={selectedId ? "var(--amber-light)" : "var(--primary-light)"}
+                  color={selectedId ? "var(--amber)" : "var(--primary)"}
+                />
+              </Row>
+              {config.ad_set?.targeting_keywords?.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>Clinical Focus</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {config.ad_set.targeting_keywords.map((kw) => (
+                      <span key={kw} style={{ fontSize: 11, padding: "5px 12px", borderRadius: "var(--radius-pill)", background: "var(--primary-light)", color: "var(--primary-dark)", fontWeight: 700, border: "1px solid var(--primary)15" }}>{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 28, alignItems: "start" }}>
+          <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <SectionTitle style={{ marginBottom: 0 }}>Pathway</SectionTitle>
+              <button
+                onClick={() => setShowRawJson(!showRawJson)}
+                style={{ fontSize: 12, padding: "6px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--surface)", cursor: "pointer", fontWeight: 700, transition: "all 0.15s" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "#fff"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface)"}
+              >
+                {showRawJson ? "Visual Mode" : "Developer JSON"}
+              </button>
+            </div>
+            {showRawJson ? (
+              <div>
+                <textarea
+                  value={configJson}
+                  onChange={(e) => handleJsonChange(e.target.value)}
+                  style={{ width: "100%", minHeight: 240, fontFamily: "monospace", fontSize: 13, padding: 16, border: jsonError ? "2px solid var(--red)" : "1.5px solid var(--border)", borderRadius: "var(--radius-md)", background: "#0f172a", color: "#38bdf8", resize: "vertical" }}
+                  spellCheck={false}
+                />
+                {jsonError && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 8, fontWeight: 600 }}>Invalid clinical schema: {jsonError}</div>}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                <FieldGroup label="Clinical Pathway Name">
+                  <input value={config.campaign?.name || ""} onChange={(e) => setField("campaign", "name", e.target.value)} style={inputStyle} />
+                </FieldGroup>
+                <FieldGroup label="Optimization Objective">
+                  <select value={config.campaign?.objective || "OUTCOME_SALES"} onChange={(e) => setField("campaign", "objective", e.target.value)} style={inputStyle}>
+                    <option value="OUTCOME_SALES">Patient Conversion</option>
+                    <option value="OUTCOME_TRAFFIC">Website Traffic</option>
+                    <option value="OUTCOME_AWARENESS">Reach & Awareness</option>
+                    <option value="OUTCOME_LEADS">Lead Generation</option>
+                  </select>
+                </FieldGroup>
+              </div>
+            )}
+          </Card>
+
+          <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)", opacity: showRawJson ? 0.3 : 1, pointerEvents: showRawJson ? "none" : "auto" }}>
+            <SectionTitle>Routing & Target</SectionTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 4 }}>
+              <FieldGroup label="Group Name" span={2}>
+                <input value={config.ad_set?.name || ""} onChange={(e) => setField("ad_set", "name", e.target.value)} style={inputStyle} />
+              </FieldGroup>
+              <FieldGroup label="Target Budget ($)">
+                <input type="number" value={config.ad_set?.daily_budget || 5000} onChange={(e) => setField("ad_set", "daily_budget", Number(e.target.value))} style={inputStyle} />
+              </FieldGroup>
+              <FieldGroup label="Demographics">
+                <select value={config.ad_set?.gender ?? 0} onChange={(e) => setField("ad_set", "gender", Number(e.target.value))} style={inputStyle}>
+                  <option value={0}>All Patients</option>
+                  <option value={1}>Male Focus</option>
+                  <option value={2}>Female Focus</option>
+                </select>
+              </FieldGroup>
+              <FieldGroup label="Min Age">
+                <input type="number" value={config.ad_set?.age_min || 18} onChange={(e) => setField("ad_set", "age_min", Number(e.target.value))} style={inputStyle} />
+              </FieldGroup>
+              <FieldGroup label="Max Age">
+                <input type="number" value={config.ad_set?.age_max || 65} onChange={(e) => setField("ad_set", "age_max", Number(e.target.value))} style={inputStyle} />
+              </FieldGroup>
+            </div>
+          </Card>
+
+          <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)", opacity: showRawJson ? 0.3 : 1, pointerEvents: showRawJson ? "none" : "auto" }}>
+            <SectionTitle>Creative Identity</SectionTitle>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 4 }}>
+              <FieldGroup label="Creative Name">
+                <input value={config.ad?.name || ""} onChange={(e) => setField("ad", "name", e.target.value)} style={inputStyle} />
+              </FieldGroup>
+              <FieldGroup label="Clinical Headline">
+                <input value={config.ad?.headline || ""} onChange={(e) => setField("ad", "headline", e.target.value)} style={inputStyle} />
+              </FieldGroup>
+              <FieldGroup label="Patient Reach Text">
+                <textarea value={config.ad?.primary_text || ""} onChange={(e) => setField("ad", "primary_text", e.target.value)} style={{ ...inputStyle, minHeight: 90, resize: "vertical" }} />
+              </FieldGroup>
+              <FieldGroup label="Call to Action">
+                <select value={config.ad?.call_to_action_type || "LEARN_MORE"} onChange={(e) => setField("ad", "call_to_action_type", e.target.value)} style={inputStyle}>
+                  <option value="LEARN_MORE">LEARN_MORE</option>
+                  <option value="BOOK_NOW">BOOK_NOW</option>
+                  <option value="CONTACT_US">CONTACT_US</option>
+                  <option value="GET_QUOTE">GET_ESTIMATE</option>
+                </select>
+              </FieldGroup>
+            </div>
+          </Card>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <Card style={{
+            border: launchSuccess ? "3px solid var(--green)" : (selectedId ? "3px solid var(--amber)" : "3px solid var(--primary)"),
+            boxShadow: launchSuccess ? "0 20px 40px -10px rgba(16, 185, 129, 0.2)" : (selectedId ? "0 20px 40px -10px rgba(245, 158, 11, 0.2)" : "0 20px 40px -10px rgba(2, 132, 199, 0.2)"),
+            background: "#fff",
+            padding: 40,
+            borderRadius: "var(--radius-lg)"
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 32 }}>
+              <div style={{
+                width: 80, height: 80, borderRadius: "20px",
+                background: launchSuccess ? "var(--green-light)" : (selectedId ? "var(--amber-light)" : "var(--primary-light)"),
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, flexShrink: 0,
+                boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)"
+              }}>
+                {launchSuccess ? "⚕️" : (selectedId ? "💉" : "💠")}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 26, fontWeight: 900, marginBottom: 10, color: "var(--text)", letterSpacing: "-0.02em" }}>
+                  {launchSuccess ? "Clinical Deployment Verified" : (selectedId ? `Append Protocol to: ${selectedCampaign?.name}` : "Launch New Clinical Operations")}
+                </div>
+                <div style={{ fontSize: 16, color: "var(--text-muted)", marginBottom: 32, lineHeight: 1.6 }}>
+                  {launchSuccess
+                    ? "The treatment pathway has been synchronized with the advertising network. Draft logs available in Meta Ads Manager."
+                    : selectedId
+                      ? `Targeting protocols and clinical creatives will be injected into the existing ${selectedCampaign?.name} hierarchy.`
+                      : "Initialize a top-level hospital campaign and set up the automated patient recruitment funnel."}
+                </div>
+
+                {launching ? (
+                  <div style={{ padding: "32px", background: "var(--bg)", borderRadius: "var(--radius-lg)", border: "1.5px solid var(--primary)30" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                      <Spinner size={18} />
+                      <span style={{ fontSize: 15, fontWeight: 800, color: "var(--primary-dark)", letterSpacing: "0.02em" }}>
+                        {launchStep === 1 ? "Syncing Patient Data & Media Assets..." :
+                          launchStep === 2 ? "Compiling Medical Schema..." :
+                            launchStep === 3 ? "Building Treatment Path AdSets..." :
+                              "Finalizing Patient Outreach Logic..."}
+                      </span>
+                    </div>
+                    <div style={{ height: 8, background: "var(--border-light)", borderRadius: 10, overflow: "hidden" }}>
+                      <div style={{ height: "100%", background: "var(--primary)", width: `${(launchStep / 4) * 100}%`, transition: "width 0.4s ease-out" }} />
+                    </div>
+                  </div>
+                ) : launchSuccess ? (
+                  <div style={{ display: "flex", gap: 16 }}>
+                    <PrimaryButton onClick={() => window.open(`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${process.env.NEXT_PUBLIC_META_AD_ACCOUNT_ID}`, "_blank")} style={{ background: "var(--secondary)", padding: "18px 36px", fontSize: 16 }}>
+                      Review Protocol ↗
+                    </PrimaryButton>
+                    <button onClick={() => setLaunchSuccess(false)} style={{ padding: "18px 36px", borderRadius: "var(--radius-md)", border: "2px solid var(--border)", background: "#fff", cursor: "pointer", fontSize: 16, fontWeight: 700, transition: "all 0.2s" }}>
+                      Queue Another Segment
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 16 }}>
+                    <PrimaryButton
+                      onClick={handleFullLaunch}
+                      disabled={launching}
+                      style={{ background: selectedId ? "var(--amber)" : "var(--primary)", padding: "18px 48px", fontSize: 16, fontWeight: 800, letterSpacing: "0.03em" }}
+                    >
+                      {selectedId ? "Execute Protocol Injection →" : "Authorize Clinical Deployment →"}
+                    </PrimaryButton>
+                  </div>
+                )}
+
+                {launchError && (
+                  <div style={{ marginTop: 24, padding: "18px 24px", borderRadius: "var(--radius-lg)", background: "var(--red-light)", color: "var(--red-dark)", fontSize: 15, border: "2px solid var(--red)30", fontWeight: 500 }}>
+                    <span style={{ fontWeight: 800, textTransform: "uppercase", marginRight: 10 }}>Deployment Error:</span> {launchError}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, children }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: "1px solid var(--border-light)" }}>
+      <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500 }}>{label}</span>
+      {children || <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{value}</span>}
+    </div>
+  );
+}
+
+function FieldGroup({ label, children, span }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, gridColumn: span === 2 ? "span 2" : undefined }}>
+      <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputStyle = {
+  padding: "12px 14px",
+  borderRadius: "var(--radius-md)",
+  border: "1.5px solid var(--border)",
+  background: "#f8fafc",
+  fontSize: 14,
+  fontWeight: 500,
+  width: "100%",
+  boxSizing: "border-box",
+  transition: "all 0.2s ease",
+  outline: "none",
+};

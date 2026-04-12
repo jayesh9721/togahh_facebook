@@ -50,10 +50,18 @@ export async function POST(request) {
 
     return Response.json(data, { status: 200 });
   } catch (err) {
-    // Network / parse errors — return 200 so the client can show a
-    // user-friendly message without crashing the dev overlay.
+    // Network / parse errors
+    console.error("API Proxy Error:", err);
+    
+    // If it's a long-running action, it might just be a timeout
+    const isLongRunning = ["competitor_analysis", "generate_ad"].includes(request.headers.get("x-action") || "");
+    
     return Response.json(
-      { error: err.message || "Failed to reach n8n" },
+      { 
+        error: err.message || "Failed to reach n8n",
+        isTimeout: true, // Hint to the frontend that it might still be running
+        action: request.headers.get("x-action")
+      },
       { status: 200 }
     );
   }

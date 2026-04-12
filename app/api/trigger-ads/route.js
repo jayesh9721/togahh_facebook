@@ -11,32 +11,30 @@ export async function POST(request) {
       )
     }
 
-    // Update Supabase: mark ads workflow as triggered
-    const { error: dbError } = await supabase
-      .from('reports_json')
-      .update({ ads_workflow_triggered: true })
-      .eq('id', report_id)
-
-    if (dbError) {
-      return Response.json(
-        { success: false, error: dbError.message },
-        { status: 500 }
-      )
+    // Update Supabase: mark ads workflow as triggered (if real record exists)
+    try {
+      await supabase
+        .from('reports_json')
+        .update({ ads_workflow_triggered: true })
+        .eq('id', report_id)
+    } catch (err) {
+      // Ignore if not a valid UUID or record not found
+      console.warn('DB update skipped for report_id:', report_id)
     }
 
     // Call external webhook with full report data
     try {
-      await fetch('https://n8n.srv881198.hstgr.cloud/webhook/generate_ad', {
+      // Fire and forget (or handles immediate response)
+      fetch('https://n8n.srv881198.hstgr.cloud/webhook/generate_ad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ report_id, report_data, ads_config: ads_config || {} }),
-      })
+      }).catch(e => console.error('Background webhook error:', e))
     } catch (webhookError) {
-      // Log but don't fail - the DB update succeeded
-      console.error('Webhook call failed:', webhookError.message)
+      console.error('Webhook initial call failed:', webhookError.message)
     }
 
-    return Response.json({ success: true, report_id })
+    return Response.json({ success: true, message: 'Workflow triggered', report_id })
   } catch (error) {
     return Response.json(
       { success: false, error: error.message },
