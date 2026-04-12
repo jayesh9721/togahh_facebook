@@ -57,6 +57,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState("overview");
   const [selectedTopic, setSelectedTopic] = useState(TOPICS[1]);
   const [user, setUser] = useState(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   // Analysis
   const [analysisStatus, setAnalysisStatus] = useState("idle");
@@ -286,13 +287,33 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setUser(session.user);
+          setIsAuthenticating(false);
+        } else {
+          // No session found, redirect to login
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Auth session check error:", error);
+        router.push("/login");
+      }
+    };
+
+    checkSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      if (session) {
+        setUser(session.user);
+        setIsAuthenticating(false);
+      } else {
+        setUser(null);
+        router.push("/login");
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -915,6 +936,30 @@ export default function Dashboard() {
   });
 
   // ─────────────────────────────────────────────────────────────
+  if (isAuthenticating || !user) {
+    return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--bg-light)",
+        gap: 20
+      }}>
+        <Spinner size={32} color="var(--primary)" />
+        <div style={{ 
+          fontSize: 16, 
+          fontWeight: 600, 
+          color: "var(--primary)",
+          letterSpacing: "0.02em" 
+        }}>
+          Verifying Clinical Credentials...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
