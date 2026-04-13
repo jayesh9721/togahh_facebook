@@ -14,19 +14,23 @@ const DEFAULT_CONFIG = {
   campaign: {
     name: "treatment_pathway_q2_2026",
     objective: "OUTCOME_SALES",
+    buying_type: "AUCTION",
     special_ad_categories: ["NONE"],
-    has_special_ad_categories: false,
+    is_adset_budget_sharing_enabled: false,
   },
   ad_set: {
     name: "Regional_Health_30-65_All",
-    dsa_payor: "HealPoint",
-    dsa_beneficiary: "HealPoint Health",
     daily_budget: 5000,
+    lifetime_budget: 50000,
+    budget_type: "DAILY",
+    start_time: new Date().toISOString().slice(0, 16),
+    stop_time: "",
+    has_end_date: false,
     age_min: 30,
     age_max: 65,
     gender: 0,
-    targeting_type: "world",
-    geo_targeting: ["CA"],
+    geo_targeting: ["CA", "GB"],
+    optimization_goal: "OFFSITE_CONVERSIONS",
     targeting_keywords: [
       "healthcare services",
       "medical specialists",
@@ -46,17 +50,42 @@ const DEFAULT_CONFIG = {
     type: "video",
     media_type: "video",
     headline: "World-Class Surgical Care & Safety",
+    description: "Experience our state-of-the-art medical facilities and patient-centered care.",
     primary_text:
       "From referral to recovery — experience JCI‑accredited excellence, state‑of‑the‑art facilities, and compassionate patient care. Watch our facility tour and book an initial consultation.",
     website_url: "https://healpoint.ai",
+    display_link: "healpoint.ai/clinical-excellence",
     call_to_action_type: "LEARN_MORE",
+    facebook_page: "HealPoint Health Center",
+    instagram_account: "healpoint_medical",
   },
   link_data:
     "https://nidoqmcxmlyiovdktzxg.supabase.co/storage/v1/object/AD1/08-04-2026_11-55AM.mp4",
 };
 
-// ─── GENDER LABELS ─────────────────────────────────────────────────────────────
+// ─── CONSTANTS ─────────────────────────────────────────────────────────────────
 const GENDER_LABELS = { 0: "All Patients", 1: "Male", 2: "Female" };
+const BUYING_TYPES = ["AUCTION", "REACH"];
+const AD_CATEGORIES = ["NONE", "EMPLOYMENT", "HOUSING", "CREDIT", "ISSUES_ELECTIONS_POLITICS"];
+const CAMPAIGN_OBJECTIVES = [
+  { value: "OUTCOME_AWARENESS", label: "Awareness", icon: "📢" },
+  { value: "OUTCOME_TRAFFIC", label: "Traffic", icon: "🌐" },
+  { value: "OUTCOME_ENGAGEMENT", label: "Engagement", icon: "💬" },
+  { value: "OUTCOME_LEADS", label: "Leads", icon: "📋" },
+  { value: "OUTCOME_APP_PROMOTION", label: "App Promotion", icon: "📱" },
+  { value: "OUTCOME_SALES", label: "Sales", icon: "🛍️" },
+];
+const OPTIMIZATION_GOALS = [
+  { value: "OFFSITE_CONVERSIONS", label: "Conversions" },
+  { value: "LINK_CLICKS", label: "Link Clicks" },
+  { value: "REACH", label: "Reach" },
+  { value: "IMPRESSIONS", label: "Impressions" },
+  { value: "POST_ENGAGEMENT", label: "Post Engagement" }
+];
+const BUDGET_TYPES = [
+  { value: "DAILY", label: "Daily budget" },
+  { value: "LIFETIME", label: "Lifetime budget" }
+];
 
 export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
   const [campaigns, setCampaigns] = useState([]);
@@ -389,10 +418,45 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
           </Card>
         </div>
 
+        {/* ── Facebook-Style Hierarchy Header ── */}
+        {!showRawJson && (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 28,
+            marginBottom: -12,
+            padding: "0 4px"
+          }}>
+            <div style={navSegmentStyle}>
+              <div style={navBadgeStyle}>1</div>
+              <div>
+                <div style={navLabelStyle}>CAMPAIGN</div>
+                <div style={navSubLabelStyle}>Pathway Strategy</div>
+              </div>
+              <div style={navConnectorStyle} />
+            </div>
+            <div style={navSegmentStyle}>
+              <div style={navBadgeStyle}>2</div>
+              <div>
+                <div style={navLabelStyle}>AD SET</div>
+                <div style={navSubLabelStyle}>Targeting & Budget</div>
+              </div>
+              <div style={navConnectorStyle} />
+            </div>
+            <div style={navSegmentStyle}>
+              <div style={navBadgeStyle}>3</div>
+              <div>
+                <div style={navLabelStyle}>AD</div>
+                <div style={navSubLabelStyle}>Creative Identity</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 28, alignItems: "start" }}>
           <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <SectionTitle style={{ marginBottom: 0 }}>Pathway</SectionTitle>
+              <SectionTitle style={{ marginBottom: 0 }}>CAMPAIGN | Pathway</SectionTitle>
               <button
                 onClick={() => setShowRawJson(!showRawJson)}
                 style={{ fontSize: 12, padding: "6px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--surface)", cursor: "pointer", fontWeight: 700, transition: "all 0.15s" }}
@@ -414,65 +478,148 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                <FieldGroup label="Clinical Pathway Name">
-                  <input value={config.campaign?.name || ""} onChange={(e) => setField("campaign", "name", e.target.value)} style={inputStyle} />
-                </FieldGroup>
-                <FieldGroup label="Optimization Objective">
-                  <select value={config.campaign?.objective || "OUTCOME_SALES"} onChange={(e) => setField("campaign", "objective", e.target.value)} style={inputStyle}>
-                    <option value="OUTCOME_SALES">Patient Conversion</option>
-                    <option value="OUTCOME_TRAFFIC">Website Traffic</option>
-                    <option value="OUTCOME_AWARENESS">Reach & Awareness</option>
-                    <option value="OUTCOME_LEADS">Lead Generation</option>
+                <FieldGroup label="Buying Type">
+                  <select value={config.campaign?.buying_type || "AUCTION"} onChange={(e) => setField("campaign", "buying_type", e.target.value)} style={inputStyle}>
+                    {BUYING_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
                   </select>
                 </FieldGroup>
+                <FieldGroup label="Campaign Objective">
+                  <select value={config.campaign?.objective || "OUTCOME_SALES"} onChange={(e) => setField("campaign", "objective", e.target.value)} style={inputStyle}>
+                    {CAMPAIGN_OBJECTIVES.map(obj => <option key={obj.value} value={obj.value}>{obj.icon} {obj.label}</option>)}
+                  </select>
+                </FieldGroup>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "#f8fafc", borderRadius: "14px", border: "1.5px solid var(--border-light)", marginTop: 4 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", letterSpacing: "0.01em" }}>Advantage+ Campaign Budget</span>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>AI-optimized budget distribution</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    id="cbo-toggle"
+                    checked={config.campaign?.is_adset_budget_sharing_enabled || false}
+                    onChange={(e) => setField("campaign", "is_adset_budget_sharing_enabled", e.target.checked)}
+                    style={{ width: 20, height: 20, accentColor: "var(--primary)", cursor: "pointer" }}
+                  />
+                </div>
               </div>
             )}
           </Card>
 
           <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)", opacity: showRawJson ? 0.3 : 1, pointerEvents: showRawJson ? "none" : "auto" }}>
-            <SectionTitle>Routing & Target</SectionTitle>
+            <SectionTitle>AD SET | Routing & Target</SectionTitle>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 4 }}>
-              <FieldGroup label="Group Name" span={2}>
-                <input value={config.ad_set?.name || ""} onChange={(e) => setField("ad_set", "name", e.target.value)} style={inputStyle} />
+              <FieldGroup label="Target Locations" span={2}>
+                <input 
+                  value={config.ad_set?.geo_targeting?.join(", ") || ""} 
+                  onChange={(e) => setField("ad_set", "geo_targeting", e.target.value.split(",").map(s => s.trim().toUpperCase()))} 
+                  placeholder="e.g. US, CA, LONDON"
+                  style={inputStyle} 
+                />
               </FieldGroup>
-              <FieldGroup label="Target Budget ($)">
-                <input type="number" value={config.ad_set?.daily_budget || 5000} onChange={(e) => setField("ad_set", "daily_budget", Number(e.target.value))} style={inputStyle} />
+              <FieldGroup label="Optimization Goal" span={2}>
+                <select value={config.ad_set?.optimization_goal || "OFFSITE_CONVERSIONS"} onChange={(e) => setField("ad_set", "optimization_goal", e.target.value)} style={inputStyle}>
+                  {OPTIMIZATION_GOALS.map(goal => <option key={goal.value} value={goal.value}>{goal.label}</option>)}
+                </select>
               </FieldGroup>
-              <FieldGroup label="Demographics">
+              
+              <div style={subSectionStyle}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <SectionTitle style={{ fontSize: 13, marginBottom: 0, color: "var(--primary-dark)", letterSpacing: "0.05em" }}>BUDGET & SCHEDULE</SectionTitle>
+                  <Badge text="Live Sync" color="var(--blue-600)" bg="var(--blue-50)" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <FieldGroup label="Budget Type">
+                    <select value={config.ad_set?.budget_type || "DAILY"} onChange={(e) => setField("ad_set", "budget_type", e.target.value)} style={inputStyle}>
+                      {BUDGET_TYPES.map(bt => <option key={bt.value} value={bt.value}>{bt.label}</option>)}
+                    </select>
+                  </FieldGroup>
+                  <FieldGroup label={`Amount (${config.ad_set?.budget_type === "DAILY" ? "Daily" : "Lifetime"})`}>
+                    <input 
+                      type="number" 
+                      value={config.ad_set?.budget_type === "DAILY" ? (config.ad_set?.daily_budget || 5000) : (config.ad_set?.lifetime_budget || 50000)} 
+                      onChange={(e) => setField("ad_set", config.ad_set?.budget_type === "DAILY" ? "daily_budget" : "lifetime_budget", Number(e.target.value))} 
+                      style={inputStyle} 
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Start Date">
+                    <input 
+                      type="datetime-local" 
+                      value={config.ad_set?.start_time || ""} 
+                      onChange={(e) => setField("ad_set", "start_time", e.target.value)} 
+                      style={inputStyle} 
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="End Date">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <input 
+                          type="checkbox" 
+                          id="end-date-toggle"
+                          checked={config.ad_set?.has_end_date || false}
+                          onChange={(e) => setField("ad_set", "has_end_date", e.target.checked)}
+                          style={{ width: 18, height: 18, accentColor: "var(--primary)", cursor: "pointer" }}
+                        />
+                        <label htmlFor="end-date-toggle" style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", cursor: "pointer" }}>Set an end date</label>
+                      </div>
+                      {config.ad_set?.has_end_date && (
+                        <input 
+                          type="datetime-local" 
+                          value={config.ad_set?.stop_time || ""} 
+                          onChange={(e) => setField("ad_set", "stop_time", e.target.value)} 
+                          style={inputStyle} 
+                        />
+                      )}
+                    </div>
+                  </FieldGroup>
+                </div>
+              </div>
+
+              <FieldGroup label="Demographics" span={2}>
                 <select value={config.ad_set?.gender ?? 0} onChange={(e) => setField("ad_set", "gender", Number(e.target.value))} style={inputStyle}>
                   <option value={0}>All Patients</option>
                   <option value={1}>Male Focus</option>
                   <option value={2}>Female Focus</option>
                 </select>
               </FieldGroup>
-              <FieldGroup label="Min Age">
-                <input type="number" value={config.ad_set?.age_min || 18} onChange={(e) => setField("ad_set", "age_min", Number(e.target.value))} style={inputStyle} />
-              </FieldGroup>
-              <FieldGroup label="Max Age">
-                <input type="number" value={config.ad_set?.age_max || 65} onChange={(e) => setField("ad_set", "age_max", Number(e.target.value))} style={inputStyle} />
-              </FieldGroup>
             </div>
           </Card>
 
           <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)", opacity: showRawJson ? 0.3 : 1, pointerEvents: showRawJson ? "none" : "auto" }}>
-            <SectionTitle>Creative Identity</SectionTitle>
+            <SectionTitle>AD | Creative Identity</SectionTitle>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 4 }}>
-              <FieldGroup label="Creative Name">
-                <input value={config.ad?.name || ""} onChange={(e) => setField("ad", "name", e.target.value)} style={inputStyle} />
+              <div style={subSectionStyle}>
+                <SectionTitle style={{ fontSize: 13, marginBottom: 16, color: "var(--primary-dark)", letterSpacing: "0.05em" }}>ACCOUNT IDENTITIES</SectionTitle>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <FieldGroup label="Facebook Page">
+                    <input value={config.ad?.facebook_page || ""} onChange={(e) => setField("ad", "facebook_page", e.target.value)} style={inputStyle} />
+                  </FieldGroup>
+                  <FieldGroup label="Instagram Profile">
+                    <input value={config.ad?.instagram_account || ""} onChange={(e) => setField("ad", "instagram_account", e.target.value)} style={inputStyle} />
+                  </FieldGroup>
+                </div>
+              </div>
+
+              <FieldGroup label="Primary Ad Text">
+                <textarea value={config.ad?.primary_text || ""} onChange={(e) => setField("ad", "primary_text", e.target.value)} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
               </FieldGroup>
-              <FieldGroup label="Clinical Headline">
-                <input value={config.ad?.headline || ""} onChange={(e) => setField("ad", "headline", e.target.value)} style={inputStyle} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <FieldGroup label="Headline">
+                  <input value={config.ad?.headline || ""} onChange={(e) => setField("ad", "headline", e.target.value)} style={inputStyle} />
+                </FieldGroup>
+                <FieldGroup label="CTA Button">
+                  <select value={config.ad?.call_to_action_type || "LEARN_MORE"} onChange={(e) => setField("ad", "call_to_action_type", e.target.value)} style={inputStyle}>
+                    <option value="LEARN_MORE">LEARN_MORE</option>
+                    <option value="BOOK_NOW">BOOK_NOW</option>
+                    <option value="CONTACT_US">CONTACT_US</option>
+                    <option value="GET_QUOTE">GET_ESTIMATE</option>
+                  </select>
+                </FieldGroup>
+              </div>
+              <FieldGroup label="Ad Description (Small Text)">
+                <input value={config.ad?.description || ""} onChange={(e) => setField("ad", "description", e.target.value)} style={inputStyle} />
               </FieldGroup>
-              <FieldGroup label="Patient Reach Text">
-                <textarea value={config.ad?.primary_text || ""} onChange={(e) => setField("ad", "primary_text", e.target.value)} style={{ ...inputStyle, minHeight: 90, resize: "vertical" }} />
-              </FieldGroup>
-              <FieldGroup label="Call to Action">
-                <select value={config.ad?.call_to_action_type || "LEARN_MORE"} onChange={(e) => setField("ad", "call_to_action_type", e.target.value)} style={inputStyle}>
-                  <option value="LEARN_MORE">LEARN_MORE</option>
-                  <option value="BOOK_NOW">BOOK_NOW</option>
-                  <option value="CONTACT_US">CONTACT_US</option>
-                  <option value="GET_QUOTE">GET_ESTIMATE</option>
-                </select>
+              <FieldGroup label="Display Link Mask">
+                <input value={config.ad?.display_link || ""} onChange={(e) => setField("ad", "display_link", e.target.value)} style={inputStyle} />
               </FieldGroup>
             </div>
           </Card>
@@ -575,6 +722,15 @@ function FieldGroup({ label, children, span }) {
   );
 }
 
+const subSectionStyle = {
+  gridColumn: "span 2",
+  padding: "20px",
+  background: "#f8fafc",
+  borderRadius: "16px",
+  border: "1.5px solid var(--border-light)",
+  marginTop: 8
+};
+
 const inputStyle = {
   padding: "12px 14px",
   borderRadius: "var(--radius-md)",
@@ -586,4 +742,54 @@ const inputStyle = {
   boxSizing: "border-box",
   transition: "all 0.2s ease",
   outline: "none",
+};
+
+const navSegmentStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "12px 16px",
+  background: "#fff",
+  borderRadius: "12px",
+  border: "1.5px solid var(--border)",
+  boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+  position: "relative"
+};
+
+const navBadgeStyle = {
+  width: 24,
+  height: 24,
+  borderRadius: "50%",
+  background: "var(--primary)",
+  color: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 12,
+  fontWeight: 800
+};
+
+const navLabelStyle = {
+  fontSize: 11,
+  fontWeight: 900,
+  color: "var(--primary)",
+  letterSpacing: "0.05em"
+};
+
+const navSubLabelStyle = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text)",
+  marginTop: -1
+};
+
+const navConnectorStyle = {
+  position: "absolute",
+  right: -20,
+  top: "50%",
+  transform: "translateY(-50%)",
+  width: 12,
+  height: 2,
+  background: "var(--border)",
+  zIndex: 1
 };

@@ -28,8 +28,16 @@ export async function POST(request) {
     const objective       = campaign?.objective        || "OUTCOME_SALES";
     const campaignName    = campaign?.name             || `[DRAFT] ${objective}_${Date.now()}`;
     const specialAdCats   = campaign?.special_ad_categories || ["NONE"];
-    const adSetName       = ad_set?.name              || "Ad Set";
+    const isCbo           = campaign?.is_adset_budget_sharing_enabled || false;
+    
+    // Budget & Schedule
+    const budgetType      = ad_set?.budget_type       || "DAILY";
     const dailyBudget     = ad_set?.daily_budget       || 5000;
+    const lifetimeBudget  = ad_set?.lifetime_budget    || 50000;
+    const startTime       = ad_set?.start_time         || null;
+    const stopTime        = ad_set?.has_end_date ? ad_set?.stop_time : null;
+
+    const adSetName       = ad_set?.name              || "Ad Set";
     const ageMin          = ad_set?.age_min            || 18;
     const ageMax          = ad_set?.age_max            || 65;
     const gender          = ad_set?.gender             ?? 0; // 0=all,1=male,2=female
@@ -40,7 +48,7 @@ export async function POST(request) {
     const headline        = ad?.headline              || "";
     const primaryText     = ad?.primary_text          || "";
     const websiteUrl      = ad?.website_url           || "https://togahh.com";
-    const ctaType         = ad?.call_to_action_type   || "WATCH_MORE";
+    const ctaType         = ad?.call_to_action_type   || "LEARN_MORE";
 
     // ── Geo targeting object (country codes) ──────────────────────────────
     const geoLocations = {
@@ -134,7 +142,8 @@ export async function POST(request) {
             objective,
             status: "PAUSED",
             special_ad_categories: specialAdCats,
-            is_adset_budget_sharing_enabled: false,
+            is_adset_budget_sharing_enabled: isCbo,
+            ...(isCbo ? (budgetType === "DAILY" ? { daily_budget: dailyBudget } : { lifetime_budget: lifetimeBudget }) : {}),
             access_token: accessToken,
           }),
         }
@@ -153,7 +162,9 @@ export async function POST(request) {
         body: JSON.stringify({
           name: adSetName,
           campaign_id: campaignId,
-          daily_budget: dailyBudget,
+          ...(!isCbo ? (budgetType === "DAILY" ? { daily_budget: dailyBudget } : { lifetime_budget: lifetimeBudget }) : {}),
+          start_time: startTime,
+          ...(stopTime ? { stop_time: stopTime } : {}),
           billing_event: "IMPRESSIONS",
           optimization_goal: "LINK_CLICKS",
           bid_strategy: "LOWEST_COST_WITHOUT_CAP",
