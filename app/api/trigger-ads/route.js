@@ -24,12 +24,12 @@ export async function POST(request) {
 
     // Call external webhook with full report data
     try {
-      // Fire and forget (or handles immediate response)
-      fetch('https://n8n.srv881198.hstgr.cloud/webhook/generate_ad', {
+      // Await the fetch: Vercel kills un-awaited background promises instantly.
+      await fetch('https://n8n.srv881198.hstgr.cloud/webhook/generate_ad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ report_id, report_data, ads_config: ads_config || {} }),
-      }).catch(e => console.error('Background webhook error:', e))
+      })
     } catch (webhookError) {
       console.error('Webhook initial call failed:', webhookError.message)
     }
