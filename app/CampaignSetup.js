@@ -272,7 +272,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, padding: "0 8px" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ marginBottom: 32, padding: "0 8px" }}>
         <div>
           <SectionTitle style={{ marginBottom: 6, fontSize: 24, color: "var(--text)" }}>
             Clinical Campaign Assembly
@@ -294,7 +294,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 28, alignItems: "start" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-7 items-start">
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             <div style={{
@@ -420,13 +420,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
 
         {/* ── Facebook-Style Hierarchy Header ── */}
         {!showRawJson && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 28,
-            marginBottom: -12,
-            padding: "0 4px"
-          }}>
+          <div className="hidden lg:grid lg:grid-cols-3 gap-7" style={{ marginBottom: -12, padding: "0 4px" }}>
             <div style={navSegmentStyle}>
               <div style={navBadgeStyle}>1</div>
               <div>
@@ -453,7 +447,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 28, alignItems: "start" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-7 items-start">
           <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <SectionTitle style={{ marginBottom: 0 }}>CAMPAIGN | Pathway</SectionTitle>
@@ -507,7 +501,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
 
           <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)", opacity: showRawJson ? 0.3 : 1, pointerEvents: showRawJson ? "none" : "auto" }}>
             <SectionTitle>AD SET | Routing & Target</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 4 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
               <FieldGroup label="Target Locations" span={2}>
                 <input 
                   value={config.ad_set?.geo_targeting?.join(", ") || ""} 
@@ -527,7 +521,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
                   <SectionTitle style={{ fontSize: 13, marginBottom: 0, color: "var(--primary-dark)", letterSpacing: "0.05em" }}>BUDGET & SCHEDULE</SectionTitle>
                   <Badge text="Live Sync" color="var(--blue-600)" bg="var(--blue-50)" />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Budget Type">
                     <select value={config.ad_set?.budget_type || "DAILY"} onChange={(e) => setField("ad_set", "budget_type", e.target.value)} style={inputStyle}>
                       {BUDGET_TYPES.map(bt => <option key={bt.value} value={bt.value}>{bt.label}</option>)}
@@ -589,7 +583,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 4 }}>
               <div style={subSectionStyle}>
                 <SectionTitle style={{ fontSize: 13, marginBottom: 16, color: "var(--primary-dark)", letterSpacing: "0.05em" }}>ACCOUNT IDENTITIES</SectionTitle>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Facebook Page">
                     <input value={config.ad?.facebook_page || ""} onChange={(e) => setField("ad", "facebook_page", e.target.value)} style={inputStyle} />
                   </FieldGroup>
@@ -602,7 +596,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
               <FieldGroup label="Primary Ad Text">
                 <textarea value={config.ad?.primary_text || ""} onChange={(e) => setField("ad", "primary_text", e.target.value)} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
               </FieldGroup>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FieldGroup label="Headline">
                   <input value={config.ad?.headline || ""} onChange={(e) => setField("ad", "headline", e.target.value)} style={inputStyle} />
                 </FieldGroup>
@@ -633,7 +627,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
             padding: 40,
             borderRadius: "var(--radius-lg)"
           }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 32 }}>
+            <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
               <div style={{
                 width: 80, height: 80, borderRadius: "20px",
                 background: launchSuccess ? "var(--green-light)" : (selectedId ? "var(--amber-light)" : "var(--primary-light)"),
@@ -670,7 +664,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
                     </div>
                   </div>
                 ) : launchSuccess ? (
-                  <div style={{ display: "flex", gap: 16 }}>
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <PrimaryButton onClick={() => window.open(`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${process.env.NEXT_PUBLIC_META_AD_ACCOUNT_ID}`, "_blank")} style={{ background: "var(--secondary)", padding: "18px 36px", fontSize: 16 }}>
                       Review Protocol ↗
                     </PrimaryButton>
@@ -679,7 +673,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", gap: 16 }}>
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <PrimaryButton
                       onClick={handleFullLaunch}
                       disabled={launching}

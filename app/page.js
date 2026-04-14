@@ -2524,7 +2524,7 @@ export default function Dashboard() {
       ═══════════════════════════════════════════════════════ */}
       {tab === "approval" && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ paddingBottom: 40 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ marginBottom: 20 }}>
             <div>
               <SectionTitle style={{ marginBottom: 4 }}>Ad Approval Queue</SectionTitle>
               <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -2551,14 +2551,7 @@ export default function Dashboard() {
               description="Go to the 'Create Ad' tab to preview and approve your generated creatives. Once approved, they will appear here for final launch."
             />
           ) : (
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "repeat(3, 1fr)", 
-              gap: "32px", 
-              padding: "0 40px",
-              maxWidth: "1200px",
-              margin: "0 auto"
-            }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-5" style={{ maxWidth: "1200px", margin: "0 auto" }}>
               {[...allApprovedAds]
                 .sort((a, b) => Number(a.id) - Number(b.id))
                 .map((ad) => {
@@ -2831,7 +2824,7 @@ export default function Dashboard() {
       ═══════════════════════════════════════════════════════ */}
       {tab === "reports" && (
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ marginBottom: 10 }}>
             <div>
               <SectionTitle style={{ marginBottom: 4 }}>Meta Ads Performance</SectionTitle>
               <div style={{ fontSize: 13, color: "var(--text-muted)" }}>

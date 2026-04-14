@@ -297,8 +297,145 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 1px 4px rgba(83, 74, 183, 0.3);
 }
 
-/* ── PRE / CODE ── */
-
 pre {
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS — Campaign Setup, Approval, Reports
+   Only applies to screens ≤ 768px. Desktop is untouched.
+   ══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── CAMPAIGN SETUP ── */
+
+  /* The main 3-column grid: stack to 1 column */
+  [class*="animate-in"] > div > div[style*="grid-template-columns: 1fr 1fr 1fr"],
+  [class*="animate-in"] > div > div[style*="gridTemplateColumns: \"1fr 1fr 1fr\""] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* The nav breadcrumb strip (Campaign > AdSet > Ad) */
+  [style*="gridTemplateColumns: \"1fr 1fr 1fr\""][style*="marginBottom: -12"] {
+    display: none !important;
+  }
+
+  /* Phone mockup: shrink and center */
+  [style*="maxWidth: 320"] {
+    max-width: 100% !important;
+    border-width: 8px !important;
+  }
+
+  /* Inner 2-column grids inside Campaign Setup cards */
+  [style*="gridTemplateColumns: \"1fr 1fr\""] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* span-2 field groups must still go full width */
+  [style*="gridColumn: \"span 2\""],
+  [style*="grid-column: span 2"] {
+    grid-column: unset !important;
+    width: 100% !important;
+  }
+
+  /* Launch Card: stack icon + text vertically */
+  [style*="alignItems: \"flex-start\""][style*="gap: 32"] {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 16px !important;
+  }
+
+  /* Launch button row: stack vertically */
+  [style*="padding: \"18px 48px\""] {
+    padding: 14px 24px !important;
+    font-size: 14px !important;
+    width: 100% !important;
+  }
+  [style*="padding: \"18px 36px\""] {
+    padding: 14px 20px !important;
+    width: 100% !important;
+  }
+
+  /* Header row for Campaign Setup title */
+  [style*="marginBottom: 32"][style*="padding: \"0 8px\""] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  /* ── APPROVAL TAB ── */
+
+  /* Main card grid: 3 col → 1 col */
+  [style*="gridTemplateColumns: \"repeat(3, 1fr)\""][style*="padding: \"0 40px\""],
+  div[style*="repeat(3, 1fr)"][style*="0 40px"] {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    gap: 16px !important;
+  }
+
+  /* Header row: title + approved counter */
+  [style*="justifyContent: \"space-between\""][style*="marginBottom: 20"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Each Approved ad card: make media aspect ratio shorter on mobile */
+  [style*="aspectRatio: \"9/16\""] {
+    aspect-ratio: 4/3 !important;
+  }
+
+  /* ── REPORTS TAB ── */
+
+  /* Header row: title + refresh button */
+  [style*="justifyContent: \"space-between\""][style*="marginBottom: 10"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* KPI metric card grid: auto-fit on mobile already works, force 2 cols */
+  [style*="minmax(140px, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Table wrapper: ensure horizontal scroll activated */
+  [style*="overflowX: \"auto\""],
+  [style*="overflow-x: auto"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── LIVE CAMPAIGNS TAB ── */
+
+  /* Campaign card header: prevent text overflow crushing badges */
+  [style*="padding: \"16px 20px\""][style*="justifyContent: \"space-between\""] {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Ad metrics 3-col inside accordion: stack to 2-col on mobile */
+  [style*="repeat(3, 1fr)"][style*="marginBottom: 12"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Ad row inside live campaign: stack thumbnail above info */
+  [style*="gap: 16"][style*="borderRadius: \"var(--radius-sm)\""] {
+    flex-direction: column !important;
+  }
+
+  /* Control buttons: wrap */
+  [style*="gap: 8"][style*="display: \"flex\""] > button {
+    flex: 1 1 auto;
+  }
+
+  /* Indented adset list: remove huge left padding on mobile */
+  [style*="padding: \"10px 20px 20px 40px\""] {
+    padding: 10px 10px 20px 10px !important;
+  }
+}
