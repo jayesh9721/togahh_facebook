@@ -988,11 +988,9 @@ export default function Dashboard() {
     >
       {/* ── HEADER ── */}
       <div
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0"
         style={{
           padding: "24px 0 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
           borderBottom: "1px solid var(--border-light)",
           marginBottom: 20
         }}
@@ -1033,7 +1031,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div className="flex items-center gap-4 md:gap-[20px] w-full md:w-auto justify-between md:justify-end">
           {/* Status Indicators */}
           <div style={{ display: "none", alignItems: "center", gap: 8 }}>
             <Badge text="n8n connected" color="var(--green)" bg="var(--green-light)" />
@@ -1203,11 +1201,7 @@ export default function Dashboard() {
 
             {/* Dash Body Panels */}
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1.2fr 0.8fr",
-                gap: 16,
-              }}
+              className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4"
             >
               {/* Left Column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1219,7 +1213,7 @@ export default function Dashboard() {
                     <Badge text="Live Data" color="var(--primary)" bg="var(--primary-light)" />
                   </div>
                   
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div style={{ background: "#ffffff", padding: 16, borderRadius: "var(--radius-md)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", border: "1px solid var(--border-light)" }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Inv.</div>
                       <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 6 }}>${spendTotal.toFixed(2)}</div>
@@ -1335,13 +1329,12 @@ export default function Dashboard() {
           ADS ANALYSIS
       ═══════════════════════════════════════════════════════ */}
       {tab === "analysis" && (
-        <div className="animate-fade-in" style={{ display: "flex", gap: 20 }}>
+        <div className="animate-fade-in flex flex-col lg:flex-row gap-5">
           {/* History Sidebar */}
-          <div style={{
-            width: 250, flexShrink: 0,
+          <div className="w-full lg:w-[250px] lg:flex-shrink-0 lg:sticky lg:top-5" style={{
             background: "var(--card-bg)", border: "1px solid var(--border)",
             borderRadius: "var(--radius-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 14,
-            height: "fit-content", position: "sticky", top: 20, boxShadow: "var(--shadow-sm)"
+            height: "fit-content", boxShadow: "var(--shadow-sm)"
           }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", borderBottom: "1px solid var(--border)", paddingBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
               <span>📜</span> Analysis History
@@ -1649,7 +1642,7 @@ export default function Dashboard() {
                   <Card style={{ marginBottom: 14 }}>
                     <SectionTitle>Competitor Ads</SectionTitle>
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
                         <thead>
                           <tr style={{ background: "var(--surface)" }}>
                             {["Name", "Ads", "Score", "Threat", "Angle", "Hook"].map((h) => (
@@ -1708,7 +1701,7 @@ export default function Dashboard() {
                   <Card style={{ marginBottom: 14 }}>
                     <SectionTitle>Top Hook Patterns</SectionTitle>
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
                         <thead>
                           <tr style={{ background: "var(--surface)" }}>
                             {["Pattern", "Example", "Reason", "Score"].map((h) => (
@@ -1755,13 +1748,13 @@ export default function Dashboard() {
                 )}
 
                 {/* 4 + 5. Market Insights & Gap Opportunities — side by side */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px] mb-[14px]">
 
                   {/* 4. Market Insights Table */}
                   {(analysisData?.market_insights_table?.length > 0) && (
                     <Card>
                       <SectionTitle>Market Insights</SectionTitle>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
                         <thead>
                           <tr style={{ background: "var(--surface)" }}>
                             {["Field", "Value"].map((h) => (
@@ -1794,7 +1787,7 @@ export default function Dashboard() {
                   {(analysisData?.gaps_table?.length > 0) && (
                     <Card>
                       <SectionTitle>Gap Opportunities</SectionTitle>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
                         <thead>
                           <tr style={{ background: "var(--surface)" }}>
                             {["Gap", "Opportunity", "Priority", "Impact"].map((h) => (
@@ -2936,7 +2929,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 900 }}>
                       <thead>
                         <tr style={{ background: "var(--card-bg)" }}>
                           <th style={{ padding: "12px 20px", textAlign: "left", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>Campaign</th>
@@ -3091,7 +3084,7 @@ export default function Dashboard() {
                           </div>
                           <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Ad ID: {ad.id}</div>
                           
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             <div style={{ background: "#fff", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-light)" }}>
                               <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>Spend</div>
                               <div style={{ fontSize: 14, fontWeight: 700 }}>${parseFloat(ins.spend || 0).toFixed(2)}</div>
@@ -3297,7 +3290,7 @@ export default function Dashboard() {
 
                 {/* Info Column */}
                 <div style={{ width: "60%", padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Campaign Name</label>
                       {isEditingAd ? (
@@ -3348,7 +3341,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Call to Action (Type)</label>
                       {isEditingAd ? (
