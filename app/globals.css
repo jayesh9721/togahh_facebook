@@ -307,6 +307,24 @@ pre {
    ══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
+  :root {
+    --card-padding: 12px;
+    --metric-value-size: 22px;
+  }
+
+  /* ── NAVIGATION ── */
+  .tab-nav {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 20px !important;
+    gap: 12px !important;
+  }
+  .tab-nav::-webkit-scrollbar {
+    display: none;
+  }
 
   /* ── CAMPAIGN SETUP ── */
 

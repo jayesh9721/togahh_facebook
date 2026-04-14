@@ -158,14 +158,14 @@ export default function SocialDash() {
       )}
 
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 mb-4">
         <div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
             Creator Studio
           </h1>
-          <p className="text-slate-500 mt-2 text-lg">Manage your social media content generation pipeline</p>
+          <p className="text-slate-500 mt-2 text-base sm:text-lg">Manage your social media content generation pipeline</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Badge 
             text="v2.0 Connected" 
             color={medicalBlue} 
@@ -184,7 +184,7 @@ export default function SocialDash() {
         <div className="lg:col-span-12 xl:col-span-5 space-y-10">
 
           {/* Image Generation Card */}
-          <Card className="hover:border-sky-200 transition-all" style={{ padding: "40px" }}>
+          <Card className="hover:border-sky-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
             <div className="flex items-center gap-4 mb-8">
               <div 
                 className="p-4 rounded-2xl bg-sky-50"
@@ -219,7 +219,7 @@ export default function SocialDash() {
           </Card>
 
           {/* Automated Video Card */}
-          <Card className="hover:border-teal-200 transition-all" style={{ padding: "40px" }}>
+          <Card className="hover:border-teal-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
             <div className="flex items-center gap-4 mb-8">
               <div 
                 className="p-4 rounded-2xl bg-teal-50"
@@ -253,7 +253,7 @@ export default function SocialDash() {
           </Card>
 
           {/* Manual Input Card */}
-          <Card className="hover:border-amber-200 transition-all" style={{ padding: "40px" }}>
+          <Card className="hover:border-amber-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
             <div className="flex items-center gap-4 mb-8">
               <div 
                 className="p-4 rounded-2xl bg-amber-50"
@@ -294,7 +294,7 @@ export default function SocialDash() {
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Live Feed</span>
             </div>
 
-            <div className="flex-grow bg-slate-900 relative group" style={{ height: "130px", minHeight: "130px" }}>
+            <div className="flex-grow bg-slate-900 relative group min-h-[350px] lg:min-h-[500px]">
               {videoUrl ? (
                 <video
                   ref={videoRef}
@@ -312,9 +312,9 @@ export default function SocialDash() {
               )}
             </div>
 
-            <div className="p-10 bg-slate-50 border-t border-slate-100">
+            <div className="p-6 lg:p-10 bg-slate-50 border-t border-slate-100">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
-                <div>
+                <div className="text-center sm:text-left">
                   <h3 className="font-extrabold text-xl text-slate-800">Final Creative Approval</h3>
                   <p className="text-sm text-slate-500 mt-1">Ready to push this content to your active social channels?</p>
                 </div>

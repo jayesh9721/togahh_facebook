@@ -516,7 +516,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
                 </select>
               </FieldGroup>
               
-              <div style={subSectionStyle}>
+              <div className="col-span-1 sm:col-span-2 p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 mt-2">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                   <SectionTitle style={{ fontSize: 13, marginBottom: 0, color: "var(--primary-dark)", letterSpacing: "0.05em" }}>BUDGET & SCHEDULE</SectionTitle>
                   <Badge text="Live Sync" color="var(--blue-600)" bg="var(--blue-50)" />
@@ -581,7 +581,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
           <Card style={{ border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)", opacity: showRawJson ? 0.3 : 1, pointerEvents: showRawJson ? "none" : "auto" }}>
             <SectionTitle>AD | Creative Identity</SectionTitle>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 4 }}>
-              <div style={subSectionStyle}>
+              <div className="col-span-1 sm:col-span-2 p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 mt-1">
                 <SectionTitle style={{ fontSize: 13, marginBottom: 16, color: "var(--primary-dark)", letterSpacing: "0.05em" }}>ACCOUNT IDENTITIES</SectionTitle>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Facebook Page">
@@ -624,7 +624,7 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
             border: launchSuccess ? "3px solid var(--green)" : (selectedId ? "3px solid var(--amber)" : "3px solid var(--primary)"),
             boxShadow: launchSuccess ? "0 20px 40px -10px rgba(16, 185, 129, 0.2)" : (selectedId ? "0 20px 40px -10px rgba(245, 158, 11, 0.2)" : "0 20px 40px -10px rgba(2, 132, 199, 0.2)"),
             background: "#fff",
-            padding: 40,
+            padding: "var(--card-padding, 40px)",
             borderRadius: "var(--radius-lg)"
           }}>
             <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
@@ -709,7 +709,7 @@ function Row({ label, value, children }) {
 
 function FieldGroup({ label, children, span }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, gridColumn: span === 2 ? "span 2" : undefined }}>
+    <div className={span === 2 ? "col-span-1 sm:col-span-2 flex flex-col gap-2" : "flex flex-col gap-2"}>
       <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</label>
       {children}
     </div>

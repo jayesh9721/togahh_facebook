@@ -33,7 +33,7 @@ export function Card({ children, style = {}, className = "" }) {
         background: "var(--card-bg)",
         border: "1px solid var(--border)",
         borderRadius: "var(--radius-lg)",
-        padding: 16,
+        padding: "var(--card-padding, 16px)",
         boxShadow: "var(--shadow-sm)",
         transition: "box-shadow 0.25s ease, border-color 0.2s ease, transform 0.2s ease",
         ...style,
@@ -59,7 +59,7 @@ export function MetricCard({ label, value, sub, color, bg, dot }) {
       style={{
         background: bg,
         borderRadius: "var(--radius-lg)",
-        padding: "20px",
+        padding: "var(--card-padding, 20px)",
         position: "relative",
         transition: "transform 0.2s, box-shadow 0.2s",
         border: `1px solid ${color}15`,
@@ -101,7 +101,7 @@ export function MetricCard({ label, value, sub, color, bg, dot }) {
       >
         {label}
       </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color, marginBottom: 4, lineHeight: 1, letterSpacing: "-0.02em" }}>
+      <div style={{ fontSize: "var(--metric-value-size, 28px)", fontWeight: 700, color, marginBottom: 4, lineHeight: 1, letterSpacing: "-0.02em" }}>
         {value}
       </div>
       <div style={{ fontSize: 12, color, opacity: 0.6 }}>{sub}</div>

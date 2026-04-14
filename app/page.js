@@ -1110,10 +1110,10 @@ export default function Dashboard() {
 
       {/* ── NAV TABS ── */}
       <div
+        className="tab-nav"
         style={{
           display: "flex",
           gap: 12,
-          flexWrap: "wrap",
           padding: "16px",
           background: "var(--card-bg)",
           borderRadius: "var(--radius-lg)",
@@ -1161,12 +1161,7 @@ export default function Dashboard() {
           <div className="animate-fade-in" style={{ paddingBottom: 40 }}>
             {/* Top Stat Ribbon */}
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                gap: 12,
-                marginBottom: 20,
-              }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-5"
             >
               <MetricCard
                 label="Live campaigns"
@@ -1239,7 +1234,7 @@ export default function Dashboard() {
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4, textTransform: "lowercase", display: "inline-block", background: "rgba(0,0,0,0.05)", padding: "2px 8px", borderRadius: 4 }}>{topPerformer.objective?.replace(/_/g, " ")}</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>{topPerformer.name}</div>
                       
-                      <div style={{ display: "flex", gap: 20 }}>
+                      <div className="flex flex-col sm:flex-row gap-4 lg:gap-5">
                         <div>
                           <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Spend</div>
                           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>${parseFloat(topPerformer.insights?.spend || 0).toFixed(2)}</div>
@@ -1748,7 +1743,7 @@ export default function Dashboard() {
                 )}
 
                 {/* 4 + 5. Market Insights & Gap Opportunities — side by side */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px] mb-[14px]">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px] mb-[14px]">
 
                   {/* 4. Market Insights Table */}
                   {(analysisData?.market_insights_table?.length > 0) && (
@@ -2041,7 +2036,7 @@ export default function Dashboard() {
                     background: "var(--surface)", border: "0.5px solid var(--border-light)",
                     marginBottom: 20, position: "relative", overflow: "hidden"
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5" style={{ marginBottom: 20 }}>
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
                           STEP 1: HOW MANY ADS?
@@ -2086,7 +2081,7 @@ export default function Dashboard() {
 
                     {/* ── PHASE 2: ALLOCATION ── */}
                     <div style={{ borderTop: "1px dashed var(--border)", paddingTop: 20 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5" style={{ marginBottom: 16 }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
@@ -2310,7 +2305,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     ) : (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ fontSize: 15 }}>🚀</span>
                           <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
@@ -2321,12 +2316,13 @@ export default function Dashboard() {
                           onClick={handleCreateTabTriggerAds}
                           disabled={adStatus === "generating" || adStatus === "waiting" || !analysisData}
                           type="button"
+                          className="w-full sm:w-auto"
                           style={{
                             padding: "12px 30px", borderRadius: "var(--radius-lg)", border: "none",
                             background: (adStatus === "generating" || adStatus === "waiting" || !analysisData) ? "var(--primary-light)" : "linear-gradient(135deg, #f97316, #ec4899)",
                             color: (adStatus === "generating" || adStatus === "waiting" || !analysisData) ? "var(--primary)" : "#fff",
                             fontSize: 13, fontWeight: 700, cursor: (adStatus === "generating" || !analysisData) ? "not-allowed" : "pointer",
-                            fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 8,
+                            fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
                             opacity: (adStatus === "generating" || !analysisData) ? 0.7 : 1, transition: "transform 0.15s, box-shadow 0.15s",
                             boxShadow: (adStatus === "generating" || adStatus === "waiting" || !analysisData) ? "none" : "0 4px 12px rgba(236, 72, 153, 0.3)"
                           }}
@@ -2370,14 +2366,14 @@ export default function Dashboard() {
             const adIds = [1, 2, 3, 4, 5]; // Mapping to Ad 1-3, Image 1-2
             return (
               <div style={{ marginTop: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5" style={{ marginBottom: 12 }}>
                   <SectionTitle style={{ marginBottom: 0 }}>Ad Previews — Dynamic Table</SectionTitle>
                   <button
                     onClick={handleRefreshAdVideos}
                     disabled={adVideosLoading}
                     type="button"
                     style={{
-                      display: "flex", alignItems: "center", gap: 8,
+                      display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
                       padding: "10px 24px", borderRadius: "var(--radius-md)",
                       border: "0.5px solid var(--border)", background: "var(--surface)",
                       color: "var(--text)", fontSize: 13, fontWeight: 600,
@@ -2495,17 +2491,12 @@ export default function Dashboard() {
                     };
 
                     return (
-                      <div style={{ 
-                        display: "flex", 
-                        flexWrap: "wrap", 
-                        justifyContent: "center", 
-                        gap: "32px", 
-                        padding: "0 20px",
-                        maxWidth: "960px", // Increased from 780px
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-4" style={{ 
+                        maxWidth: "1100px",
                         margin: "0 auto"
                       }}>
                         {[1, 2, 3, 4, 5].map(id => (
-                          <div key={id} style={{ width: "260px" }}>
+                          <div key={id}>
                             {renderCard(id)}
                           </div>
                         ))}
@@ -2763,18 +2754,18 @@ export default function Dashboard() {
                                   </div>
 
                                   {/* Metrics Row */}
-                                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12, background: "var(--card-bg)", padding: "8px 12px", borderRadius: "8px" }}>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3 mb-3 bg-[var(--card-bg)] p-2 md:p-3 rounded-lg border border-[var(--border-light)]">
                                     <div style={{ display: "flex", flexDirection: "column" }}>
-                                      <span style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Spend</span>
-                                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>${insights.spend || "0.00"}</span>
+                                      <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Spend</span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>${insights.spend || "0.00"}</span>
                                     </div>
                                     <div style={{ display: "flex", flexDirection: "column" }}>
-                                      <span style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>CTR</span>
-                                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>{parseFloat(insights.inline_link_click_ctr || 0).toFixed(2)}%</span>
+                                      <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>CTR</span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>{parseFloat(insights.inline_link_click_ctr || 0).toFixed(2)}%</span>
                                     </div>
                                     <div style={{ display: "flex", flexDirection: "column" }}>
-                                      <span style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Clicks</span>
-                                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{insights.clicks || "0"}</span>
+                                      <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Clicks</span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{insights.clicks || "0"}</span>
                                     </div>
                                   </div>
 
@@ -2883,7 +2874,7 @@ export default function Dashboard() {
           {metaInsights && (
             <>
               {/* Account Level KPIs */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 10 }}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-3">
                 <MetricCard 
                   label="Total Spend" 
                   value={`$${parseFloat(metaInsights.spend || 0).toFixed(2)}`} 
@@ -3271,9 +3262,9 @@ export default function Dashboard() {
               </div>
 
               {/* Body */}
-              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
                 {/* Media Column */}
-                <div style={{ width: "40%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid var(--border-light)" }}>
+                <div className="w-full lg:w-[40%] bg-[#000] flex items-center justify-center border-b lg:border-b-0 lg:border-r border-[var(--border-light)] min-h-[300px]">
                   {isVid ? (
                     <video src={ad.text} controls autoPlay={false} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   ) : (
@@ -3282,7 +3273,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Info Column */}
-                <div style={{ width: "60%", padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+                <div className="w-full lg:w-[60%] p-4 lg:p-6 overflow-y-auto flex flex-col gap-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Campaign Name</label>
