@@ -36,7 +36,7 @@ const TABS = [
   { id: "approval", label: "Approval", icon: "◉" },
   { id: "campaigns", label: "Campaign Setup", icon: "◷" },
   { id: "live_campaigns", label: "Running Campaign", icon: "🚀" },
-  { id: "social", label: "Social Posts", icon: "◫" },
+
   { id: "reports", label: "Reports", icon: "◧" },
   { id: "social-dash", label: "Social-Dash", icon: "🎨" },
 ];
@@ -88,10 +88,7 @@ export default function Dashboard() {
   const [reportStatus, setReportStatus] = useState("idle");
   // idle | generating | done | error
 
-  // Social
-  const [socialStatus, setSocialStatus] = useState("idle");
-  // idle | generating | done | error
-  const [socialActiveEvt, setSocialActiveEvt] = useState(null);
+
 
   // Shared error
   const [webhookError, setWebhookError] = useState("");
@@ -154,6 +151,13 @@ export default function Dashboard() {
   const [expandedCampaigns, setExpandedCampaigns] = useState(new Set());
   const [expandedAdSets, setExpandedAdSets] = useState(new Set());
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
+
+  // Meta Reports State
+  const [metaInsights, setMetaInsights] = useState(null);
+  const [metaCampaignInsights, setMetaCampaignInsights] = useState([]);
+  const [metaReportsLoading, setMetaReportsLoading] = useState(false);
+  const [metaReportsError, setMetaReportsError] = useState("");
+  const [selectedCampaignForReports, setSelectedCampaignForReports] = useState(null);
 
   const addSbToast = useCallback((message, type = "success") => {
     const id = Date.now();
@@ -230,6 +234,25 @@ export default function Dashboard() {
       setUpdatingStatusId(null);
     }
   };
+
+  const fetchMetaInsights = useCallback(async () => {
+    setMetaReportsLoading(true);
+    setMetaReportsError("");
+    try {
+      const res = await fetch("/api/meta/reports");
+      const data = await res.json();
+      if (res.ok) {
+        setMetaInsights(data.account || { spend: 0, impressions: 0, reach: 0, linkClicks: 0, inline_link_click_ctr: 0, leads: 0 });
+        setMetaCampaignInsights(data.campaigns || []);
+      } else {
+        setMetaReportsError(data.error || "Failed to fetch Meta insights");
+      }
+    } catch (e) {
+      setMetaReportsError("Failed to connect to reporting API");
+    } finally {
+      setMetaReportsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchReports() {
@@ -333,7 +356,10 @@ export default function Dashboard() {
     if (tab === "live_campaigns") {
       fetchLiveCampaigns();
     }
-  }, [tab, fetchLiveCampaigns]);
+    if (tab === "reports" || tab === "overview") {
+      fetchMetaInsights();
+    }
+  }, [tab, fetchLiveCampaigns, fetchMetaInsights]);
 
   // ── Polling workflow status from Supabase status_table (id: 1) ──
   useEffect(() => {
@@ -783,17 +809,7 @@ export default function Dashboard() {
     if (result) setReportStatus("done");
   }
 
-  // ── Action 6: Generate Social Post ──
-  async function generateSocialPost(eventName) {
-    setSocialActiveEvt(eventName);
-    const result = await callWebhook({
-      action: "generate_social_post",
-      event: eventName,
-      platforms: ["ig", "tiktok", "fb", "snapchat"],
-      timestamp: new Date().toISOString(),
-    }, setSocialStatus);
-    if (result) setSocialStatus("done");
-  }
+
 
   // ── Receive n8n result ──
   function receiveAnalysisResult(data) {
@@ -1123,183 +1139,197 @@ export default function Dashboard() {
       {/* ═══════════════════════════════════════════════════════
           OVERVIEW
       ═══════════════════════════════════════════════════════ */}
-      {tab === "overview" && (
-        <div className="animate-fade-in">
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: 12,
-              marginBottom: 18,
-            }}
-          >
-            <MetricCard
-              label="Live campaigns"
-              value={campaigns.length || "0"}
-              sub="Meta + Google"
-              color="var(--primary)"
-              bg="var(--primary-light)"
-            />
-            <MetricCard
-              label="Analysis status"
-              value={
-                analysisStatus === "done" ? "Ready" : "Idle"
-              }
-              sub="Competitor intel"
-              color="var(--green)"
-              bg="var(--green-light)"
-            />
-            <MetricCard
-              label="Pending approval"
-              value={adData && !approved ? "1" : "0"}
-              sub={
-                adData && !approved
-                  ? "Action needed"
-                  : "All clear"
-              }
-              color="var(--amber)"
-              bg="var(--amber-light)"
-              dot={!!(adData && !approved)}
-            />
-            <MetricCard
-              label="Stopped"
-              value={stoppedIds.length}
-              sub="This session"
-              color="var(--blue)"
-              bg="var(--blue-light)"
-            />
-          </div>
+      {tab === "overview" && (() => {
+        // Compute dynamic top statistics
+        const activeCampaigns = metaCampaignInsights.filter(c => c.effective_status === 'ACTIVE').length;
+        const totalCampaignsRendered = activeCampaigns || campaigns.length; // fallback
+        const pendingAuthCount = (adData?.ad_scripts || []).filter(a => getAdStatus(a.id) === "pending").length;
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 14,
-            }}
-          >
-            <Card>
-              <SectionTitle>n8n Integration</SectionTitle>
-              {[
-                [
-                  "Webhook URL",
-                  "/api/trigger-n8n → n8n",
-                  "var(--blue)",
-                  "var(--blue-light)",
-                ],
-                [
-                  "Analysis",
-                  analysisStatus,
-                  "var(--green)",
-                  "var(--green-light)",
-                ],
-                [
-                  "Ad generation",
-                  adStatus,
-                  "var(--green)",
-                  "var(--green-light)",
-                ],
-                [
-                  "Campaigns live",
-                  campaigns.length.toString(),
-                  "var(--primary)",
-                  "var(--primary-light)",
-                ],
-              ].map(([k, v, c, bg], i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "9px 0",
-                    borderBottom:
-                      i < 3
-                        ? "0.5px solid var(--border-light)"
-                        : "none",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    {k}
-                  </span>
-                  <Badge text={v} color={c} bg={bg} />
-                </div>
-              ))}
-            </Card>
+        // Determine Top Performer
+        let topPerformer = null;
+        if (metaCampaignInsights.length > 0) {
+          topPerformer = [...metaCampaignInsights].sort((a, b) => {
+             const ctrA = parseFloat(a.insights?.inline_link_click_ctr || 0);
+             const ctrB = parseFloat(b.insights?.inline_link_click_ctr || 0);
+             return ctrB - ctrA;
+          })[0];
+        }
 
-            <Card>
-              <SectionTitle>Quick Actions</SectionTitle>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                {[
-                  ["Run competitor analysis", () => setTab("analysis"), "◎"],
-                  ["Create new ad", () => setTab("create"), "◈"],
-                  ["Review approvals", () => setTab("approval"), "◉"],
-                  ["Live campaigns", () => setTab("campaigns"), "◷"],
-                  ["Social posts", () => setTab("social"), "◫"],
-                  ["Reports", () => setTab("reports"), "◧"],
-                ].map(([label, fn, icon], i) => (
-                  <button
-                    key={i}
-                    onClick={fn}
-                    style={{
-                      fontSize: 12,
-                      padding: "9px 14px",
-                      borderRadius: "var(--radius-md)",
-                      border: "1px solid var(--border)",
-                      background: "var(--card-bg)",
-                      color: "var(--text)",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      fontFamily: "inherit",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      transition:
-                        "background 0.15s, border-color 0.15s, transform 0.1s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background =
-                        "var(--primary-light)";
-                      e.currentTarget.style.borderColor =
-                        "var(--primary)";
-                      e.currentTarget.style.color =
-                        "var(--primary)";
-                      e.currentTarget.style.transform =
-                        "translateX(2px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background =
-                        "var(--card-bg)";
-                      e.currentTarget.style.borderColor =
-                        "var(--border)";
-                      e.currentTarget.style.color = "var(--text)";
-                      e.currentTarget.style.transform =
-                        "translateX(0)";
-                    }}
-                  >
-                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ opacity: 0.5, fontSize: 11 }}>{icon}</span>
-                      {label}
-                    </span>
-                    <span style={{ opacity: 0.4 }}>→</span>
-                  </button>
-                ))}
+        const spendTotal = parseFloat(metaInsights?.spend || 0);
+        const impressionsTotal = parseFloat(metaInsights?.impressions || 0);
+        const cpm = impressionsTotal > 0 ? (spendTotal / impressionsTotal * 1000).toFixed(2) : "0.00";
+
+        return (
+          <div className="animate-fade-in" style={{ paddingBottom: 40 }}>
+            {/* Top Stat Ribbon */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <MetricCard
+                label="Live campaigns"
+                value={totalCampaignsRendered}
+                sub="Meta Ads API"
+                color="var(--primary)"
+                bg="var(--primary-light)"
+              />
+              <MetricCard
+                label="Market Intel"
+                value={sbRows.length}
+                sub="Available reports"
+                color="var(--green)"
+                bg="var(--green-light)"
+              />
+              <MetricCard
+                label="Pending approval"
+                value={pendingAuthCount}
+                sub={pendingAuthCount > 0 ? "Action needed" : "All clear"}
+                color={pendingAuthCount > 0 ? "var(--red)" : "var(--amber)"}
+                bg={pendingAuthCount > 0 ? "var(--red-light)" : "var(--amber-light)"}
+                dot={pendingAuthCount > 0}
+              />
+              <MetricCard
+                label="Stopped"
+                value={stoppedIds.length}
+                sub="This session"
+                color="var(--text-muted)"
+                bg="var(--surface)"
+              />
+            </div>
+
+            {/* Dash Body Panels */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.2fr 0.8fr",
+                gap: 16,
+              }}
+            >
+              {/* Left Column */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                
+                {/* Account Health Window */}
+                <Card style={{ background: "linear-gradient(135deg, #f8fafc, #eff6ff)", border: "1px solid #bfdbfe", padding: "20px 24px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <SectionTitle style={{ margin: 0, color: "var(--primary)" }}>Account Health Snapshot</SectionTitle>
+                    <Badge text="Live Data" color="var(--primary)" bg="var(--primary-light)" />
+                  </div>
+                  
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                    <div style={{ background: "#ffffff", padding: 16, borderRadius: "var(--radius-md)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", border: "1px solid var(--border-light)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Inv.</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 6 }}>${spendTotal.toFixed(2)}</div>
+                    </div>
+                    <div style={{ background: "#ffffff", padding: 16, borderRadius: "var(--radius-md)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", border: "1px solid var(--border-light)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Reach</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 6 }}>{impressionsTotal.toLocaleString()}</div>
+                    </div>
+                    <div style={{ background: "#ffffff", padding: 16, borderRadius: "var(--radius-md)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", border: "1px solid var(--border-light)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Avg CPM</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "var(--primary)", marginTop: 6 }}>${cpm}</div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Top Performer Campaign */}
+                <Card style={{ position: "relative", overflow: "hidden", border: "1px solid #bbf7d0", background: "#f0fdf4" }}>
+                  <div style={{ position: "absolute", top: -20, right: -20, fontSize: 80, opacity: 0.1 }}>🏆</div>
+                  <SectionTitle style={{ color: "var(--green-strong)" }}>Top Performing Campaign</SectionTitle>
+                  
+                  {topPerformer ? (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4, textTransform: "lowercase", display: "inline-block", background: "rgba(0,0,0,0.05)", padding: "2px 8px", borderRadius: 4 }}>{topPerformer.objective?.replace(/_/g, " ")}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>{topPerformer.name}</div>
+                      
+                      <div style={{ display: "flex", gap: 20 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Spend</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>${parseFloat(topPerformer.insights?.spend || 0).toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>CTR (Link)</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--primary)" }}>{parseFloat(topPerformer.insights?.inline_link_click_ctr || 0).toFixed(2)}%</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Conversions</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>{topPerformer.insights?.leads || 0}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: "20px 0", fontSize: 13, color: "var(--text-muted)" }}>No campaigns are currently tracking performance data.</div>
+                  )}
+                </Card>
+
               </div>
-            </Card>
+
+              {/* Right Column: Quick Actions */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <Card>
+                  <SectionTitle>Quick Actions</SectionTitle>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                    }}
+                  >
+                    {[
+                      ["Run competitor analysis", () => setTab("analysis"), "◎", "Assess competitive blind spots in the market."],
+                      ["Create new ad setup", () => setTab("create"), "◈", "Generate scripts and creative logic using AI."],
+                      ["Review approvals queue", () => setTab("approval"), "◉", "Finalize ad creatives and prepare launch configurations."],
+                      ["Monitor live tracking", () => setTab("reports"), "◧", "Review granular performance tables inside Reports."],
+                    ].map(([label, fn, icon, sub], i) => (
+                      <button
+                        key={i}
+                        onClick={fn}
+                        style={{
+                          padding: "12px 16px",
+                          borderRadius: "var(--radius-md)",
+                          border: "1px solid var(--border)",
+                          background: "#fff",
+                          color: "var(--text)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontFamily: "inherit",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          transition: "all 0.15s",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "var(--surface-hover)";
+                          e.currentTarget.style.borderColor = "var(--primary-light)";
+                          e.currentTarget.style.transform = "translateX(2px)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "#fff";
+                          e.currentTarget.style.borderColor = "var(--border)";
+                          e.currentTarget.style.transform = "translateX(0)";
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 13, color: "var(--primary-strong)" }}>
+                            <span style={{ fontSize: 14 }}>{icon}</span> {label}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, marginLeft: 24 }}>{sub}</div>
+                        </div>
+                        <span style={{ opacity: 0.4, paddingLeft: 10 }}>→</span>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ═══════════════════════════════════════════════════════
           ADS ANALYSIS
@@ -2801,810 +2831,294 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════
-          SOCIAL POSTS
-      ═══════════════════════════════════════════════════════ */}
-      {tab === "social" && (
-        <div className="animate-fade-in">
-          <Card>
-            <SectionTitle>
-              Upcoming events &amp; special days — auto-detected by n8n
-            </SectionTitle>
-            {[
-              { event: "World Health Day", date: "Mon 7 Apr", type: "Awareness", status: "scheduled" },
-              { event: "National Nurses Week", date: "Tue 6 May", type: "Appreciation", status: "scheduled" },
-              { event: "Mental Health Month", date: "Thu 1 May", type: "Awareness", status: "draft" },
-              { event: "Medical Conference", date: "Sat 15 Nov", type: "Local event", status: "draft" },
-            ].map((e, i, arr) => {
-              const isActive = socialActiveEvt === e.event && (socialStatus === "generating" || socialStatus === "waiting");
-              const isDone = socialActiveEvt === e.event && socialStatus === "done";
-              return (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "12px 0",
-                    borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-light)" : "none",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{e.event}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{e.date} · {e.type}</div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Badge
-                      text={isDone ? "Posted" : e.status}
-                      color={isDone ? "var(--green)" : e.status === "scheduled" ? "var(--green)" : "var(--amber)"}
-                      bg={isDone ? "var(--green-light)" : e.status === "scheduled" ? "var(--green-light)" : "var(--amber-light)"}
-                    />
-                    <button
-                      onClick={() => generateSocialPost(e.event)}
-                      disabled={isActive || isDone}
-                      style={{
-                        fontSize: 11,
-                        padding: "5px 12px",
-                        borderRadius: "var(--radius-pill)",
-                        border: "1px solid var(--primary)",
-                        background: isActive || isDone ? "var(--primary-light)" : "transparent",
-                        color: "var(--primary)",
-                        cursor: isActive || isDone ? "not-allowed" : "pointer",
-                        opacity: isActive || isDone ? 0.6 : 1,
-                        fontWeight: 500,
-                        fontFamily: "inherit",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 5,
-                        transition: "background 0.15s",
-                      }}
-                    >
-                      {isActive ? <><Spinner size={9} color="var(--primary)" /> Generating...</> :
-                        isDone ? "✓ Done" :
-                          "Generate post"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
 
-            {socialStatus === "error" && (
-              <div style={{ marginTop: 10, fontSize: 12, color: "var(--red-strong)" }}>
-                Could not reach n8n: {webhookError}. Please try again.
-              </div>
-            )}
-
-            {analysisData?.gaps_table?.length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <SectionTitle>Top Opportunities from Analysis</SectionTitle>
-                <div style={{ background: "var(--primary-light)", padding: 14, borderRadius: "var(--radius-md)" }}>
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--purple-dark)", lineHeight: 1.6 }}>
-                    {(analysisData.gaps_table || []).map((row, idx) => (
-                      <li key={idx} style={{ marginBottom: 4 }}><strong>{row?.gap}:</strong> {row?.opportunity}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
 
       {/* ═══════════════════════════════════════════════════════
-          REPORTS — Supabase Intelligence Dashboard
+          REPORTS — Meta Ads Performance Dashboard
       ═══════════════════════════════════════════════════════ */}
       {tab === "reports" && (
-        <div className="animate-fade-in">
-          {/* Header row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>Competitor Ads Intelligence</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", display: "inline-block", animation: "dotPulse 2s ease-in-out infinite" }} />
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Connected to Supabase</span>
+              <SectionTitle style={{ marginBottom: 4 }}>Meta Ads Performance</SectionTitle>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Real-time metrics and campaign performance directly from your Meta Ad Account.
               </div>
             </div>
-            <div>
-              <button
-                onClick={generateReport}
-                disabled={reportStatus === "generating" || reportStatus === "waiting"}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "var(--radius-md)",
-                  border: "none",
-                  background: reportStatus === "done" ? "var(--green)" : reportStatus === "generating" || reportStatus === "waiting" ? "var(--surface)" : "var(--primary)",
-                  color: reportStatus === "generating" || reportStatus === "waiting" ? "var(--primary)" : "#fff",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: reportStatus === "generating" || reportStatus === "waiting" ? "not-allowed" : "pointer",
-                  fontFamily: "inherit",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  transition: "background 0.2s",
-                }}
-              >
-                {reportStatus === "generating" || reportStatus === "waiting"
-                  ? <><Spinner size={12} color="var(--primary)" /> Generating...</>
-                  : reportStatus === "done"
-                    ? "✓ Report triggered"
-                    : "Manual report trigger"}
-              </button>
-            </div>
+            <button
+              onClick={fetchMetaInsights}
+              disabled={metaReportsLoading}
+              style={{
+                padding: "8px 16px", borderRadius: "10px", border: "1px solid var(--border)", 
+                background: "#fff", cursor: metaReportsLoading ? "not-allowed" : "pointer", 
+                fontSize: 13, display: "flex", alignItems: "center", gap: 8,
+                opacity: metaReportsLoading ? 0.6 : 1, transition: "all 0.2s"
+              }}
+            >
+              {metaReportsLoading ? <Spinner size={12} /> : "↻"} Refresh Data
+            </button>
           </div>
 
-          {/* Stats row */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 18 }}>
-            <MetricCard label="Total Reports" value={sbTotalReports} sub="From Supabase" color="var(--primary)" bg="var(--primary-light)" />
-            <MetricCard label="Competitors Tracked" value={sbTotalCompetitors} sub="All reports" color="var(--blue)" bg="var(--blue-light)" />
-            <MetricCard label="High Threats" value={sbHighThreats} sub="Needs attention" color="var(--red)" bg="var(--red-light)" dot={sbHighThreats > 0} />
-            <MetricCard label="Pending Ads" value={sbPendingAds} sub="Not yet triggered" color="var(--amber)" bg="var(--amber-light)" dot={sbPendingAds > 0} />
-          </div>
+          {metaReportsError && (
+            <Card style={{ background: "var(--red-light)", border: "1px solid var(--red-strong)" }}>
+              <div style={{ color: "var(--red-strong)", fontSize: 14 }}>{metaReportsError}</div>
+            </Card>
+          )}
 
-          {/* Loading state */}
-          {sbLoading && (
+          {!metaInsights && !metaReportsLoading && !metaReportsError && (
             <Card>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 30 }}>
-                <Spinner size={16} />
-                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Loading reports from Supabase...</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "60px 20px" }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>📊</div>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Ready to load Meta Insights</div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>Sync your live Facebook ad metrics into the dashboard.</div>
+                <button
+                  onClick={fetchMetaInsights}
+                  style={{
+                    padding: "10px 24px", borderRadius: "var(--radius-md)", border: "none",
+                    background: "var(--primary)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(2, 132, 199, 0.25)"
+                  }}
+                >
+                  Load Performance Data
+                </button>
               </div>
             </Card>
           )}
 
-          {/* Empty state */}
-          {!sbLoading && sbReports.length === 0 && (
-            <Card>
-              <EmptyState
-                title="No reports yet"
-                sub="Run your n8n workflow to generate one. Reports will appear here automatically."
-              />
+          {metaReportsLoading && !metaInsights && (
+             <Card>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "60px 20px", gap: 16 }}>
+                <Spinner size={32} color="var(--primary)" />
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--primary)" }}>Connecting to Meta Graph API...</div>
+              </div>
             </Card>
           )}
 
-          {/* Report cards */}
-          {!sbLoading && sbReports.map(({ row, report }) => {
-            const competitors = report.competitors_table || [];
-            const hooks = report.hooks_table || [];
-            const insights = report.market_insights_table || [];
-            const gaps = report.gaps_table || [];
-            const competitorCount = competitors.length;
-            const highCount = competitors.filter((c) => c.threat === "high").length;
-            const mediumCount = competitors.filter((c) => c.threat === "medium").length;
-            const gapsCount = gaps.length;
-            const triggered = sbSessionTriggered.has(row.id);
-            const isTriggering = sbTriggeringId === row.id;
-            const insightsOpen = sbExpandedInsights[row.id];
-            const adsConfigOpen = sbAdsConfigOpen[row.id];
-            const adsConfig = getAdsConfig(row.id);
+          {metaInsights && (
+            <>
+              {/* Account Level KPIs */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 10 }}>
+                <MetricCard 
+                  label="Total Spend" 
+                  value={`$${parseFloat(metaInsights.spend || 0).toFixed(2)}`} 
+                  sub="All Time" 
+                  color="var(--blue)" bg="var(--blue-light)" 
+                />
+                <MetricCard 
+                  label="Impressions" 
+                  value={parseFloat(metaInsights.impressions || "0").toLocaleString()} 
+                  sub={`Reach: ${parseFloat(metaInsights.reach || "0").toLocaleString()}`} 
+                  color="var(--primary)" bg="var(--primary-light)" 
+                />
+                <MetricCard 
+                  label="Link Clicks" 
+                  value={parseFloat(metaInsights.linkClicks || "0").toLocaleString()} 
+                  sub={`CTR: ${parseFloat(metaInsights.inline_link_click_ctr || 0).toFixed(2)}%`} 
+                  color="var(--amber)" bg="var(--amber-light)" 
+                />
+                <MetricCard 
+                  label="Conversions" 
+                  value={parseFloat(metaInsights.leads || "0").toLocaleString()} 
+                  sub="Leads/Responses" 
+                  color="var(--green)" bg="var(--green-light)" 
+                />
+              </div>
 
-            return (
-              <Card key={row.id} style={{ marginBottom: 14 }}>
-                {/* Top row: date + status */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>
-                    {formatSbDate(row.created_at)}
-                  </span>
-                  <Badge
-                    text={triggered ? "Ads Created" : "Pending"}
-                    color={triggered ? "var(--green)" : "var(--text-muted)"}
-                    bg={triggered ? "var(--green-light)" : "var(--surface)"}
-                  />
+              {/* Campaign Breakdown */}
+              <Card style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border-light)" }}>
+                  <span style={{ fontSize: 15, fontWeight: 700 }}>Campaign Breakdown</span>
                 </div>
-
-                {/* Executive summary */}
-                <p style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.7, marginBottom: 14 }}>
-                  {report.executive_summary || "No summary available."}
-                </p>
-
-                {/* Tags */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-                  <Badge text={`${competitorCount} competitors`} color="var(--blue)" bg="var(--blue-light)" />
-                  {highCount > 0 && <Badge text={`${highCount} high threat`} color="var(--red)" bg="var(--red-light)" />}
-                  {mediumCount > 0 && <Badge text={`${mediumCount} medium threat`} color="var(--amber)" bg="var(--amber-light)" />}
-                  <Badge text={`${hooks.length} hooks`} color="var(--primary)" bg="var(--primary-light)" />
-                  <Badge text={`${gapsCount} gaps`} color="var(--amber)" bg="var(--amber-light)" />
-                </div>
-
-                {/* ── INLINE: Top Competitors (always visible) ── */}
-                {competitors.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-                      Top Competitors
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {competitors.slice(0, 5).map((c, i) => (
-                        <div key={i} style={{
-                          display: "flex", alignItems: "center", justifyContent: "space-between",
-                          padding: "8px 12px", borderRadius: "var(--radius-sm)",
-                          background: "var(--surface)", border: "0.5px solid var(--border-light)",
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: 11, color: "var(--text-dim)", fontWeight: 600, width: 18 }}>{i + 1}</span>
-                            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{c.ads} ads</span>
-                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
-                                <div style={{
-                                  height: "100%", borderRadius: 2,
-                                  width: `${((c.score || 0) / 12) * 100}%`,
-                                  background: c.score >= 9 ? "var(--red-error)" : c.score >= 6 ? "var(--amber)" : "var(--green)",
-                                }} />
-                              </div>
-                              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{c.score}/12</span>
-                            </div>
-                            <Badge
-                              text={c.threat}
-                              color={c.threat === "high" ? "var(--red)" : c.threat === "medium" ? "var(--amber)" : "var(--green)"}
-                              bg={c.threat === "high" ? "var(--red-light)" : c.threat === "medium" ? "var(--amber-light)" : "var(--green-light)"}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      {competitors.length > 5 && (
-                        <div style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", padding: 4 }}>
-                          +{competitors.length - 5} more — click &ldquo;View Full Report&rdquo; to see all
-                        </div>
-                      )}
-                    </div>
+                
+                {metaCampaignInsights.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+                    No campaigns found
                   </div>
-                )}
-
-                {/* ── INLINE: Top Hooks (always visible) ── */}
-                {hooks.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-                      Top Hooks
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      {hooks.slice(0, 4).map((h, i) => (
-                        <div key={i} style={{
-                          padding: "10px 12px", borderRadius: "var(--radius-sm)",
-                          background: "var(--surface)", border: "0.5px solid var(--border-light)",
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{h.pattern}</span>
-                            <Badge
-                              text={h.score}
-                              color={(h.score || "").toLowerCase() === "strong" ? "var(--green)" : (h.score || "").toLowerCase() === "moderate" ? "var(--amber)" : "var(--text-muted)"}
-                              bg={(h.score || "").toLowerCase() === "strong" ? "var(--green-light)" : (h.score || "").toLowerCase() === "moderate" ? "var(--amber-light)" : "var(--surface)"}
-                            />
-                          </div>
-                          <p style={{ fontSize: 11, fontStyle: "italic", color: "var(--amber)", lineHeight: 1.5 }}>
-                            &ldquo;{h.example}&rdquo;
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── INLINE: Top Gaps (always visible) ── */}
-                {gaps.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-                      Gaps & Opportunities
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {[...gaps].sort((a, b) => {
-                        const order = { high: 0, medium: 1, low: 2 };
-                        return (order[a.priority] ?? 3) - (order[b.priority] ?? 3);
-                      }).slice(0, 3).map((g, i) => (
-                        <div key={i} style={{
-                          padding: "10px 12px", borderRadius: "var(--radius-sm)",
-                          background: "var(--surface)", border: "0.5px solid var(--border-light)",
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                            <Badge
-                              text={g.priority?.toUpperCase()}
-                              color={g.priority === "high" ? "var(--red)" : g.priority === "medium" ? "var(--amber)" : "var(--green)"}
-                              bg={g.priority === "high" ? "var(--red-light)" : g.priority === "medium" ? "var(--amber-light)" : "var(--green-light)"}
-                            />
-                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{g.gap}</span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: 5, paddingLeft: 2 }}>
-                            <span style={{ fontSize: 11 }}>💡</span>
-                            <p style={{ fontSize: 11, color: "var(--text-body)", lineHeight: 1.5 }}>{g.opportunity}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {gaps.length > 3 && (
-                        <div style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", padding: 4 }}>
-                          +{gaps.length - 3} more gaps — click &ldquo;View Full Report&rdquo; to see all
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  <SecondaryButton
-                    onClick={() => setSbExpandedInsights((prev) => ({ ...prev, [row.id]: !prev[row.id] }))}
-                  >
-                    {insightsOpen ? "Hide Insights" : "View Insights"}
-                  </SecondaryButton>
-                  <SecondaryButton
-                    onClick={() => { setSbModalReport({ row, report }); setSbModalTab("competitors"); }}
-                  >
-                    View Full Report
-                  </SecondaryButton>
-                  {triggered ? (
-                    <span style={{
-                      padding: "7px 14px", borderRadius: "var(--radius-md)", fontSize: 12, fontWeight: 500,
-                      background: "var(--green-light)", color: "var(--green)", display: "inline-flex", alignItems: "center", gap: 4,
-                    }}>
-                      Ads Triggered ✓
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setSbAdsConfigOpen((prev) => ({ ...prev, [row.id]: !prev[row.id] }))}
-                      style={{
-                        padding: "7px 16px", borderRadius: "var(--radius-md)", border: "none",
-                        background: "linear-gradient(135deg, #f97316, #ec4899)", color: "#fff",
-                        fontSize: 12, fontWeight: 600, cursor: "pointer",
-                        fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6,
-                        transition: "opacity 0.2s, transform 0.15s",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
-                    >
-                      {adsConfigOpen ? "Cancel" : "Generate Ads →"}
-                    </button>
-                  )}
-                </div>
-
-                {/* ── Video Configuration Panel ── */}
-                {adsConfigOpen && !triggered && (
-                  <div className="animate-slide-down" style={{
-                    marginTop: 14, padding: 18, borderRadius: "var(--radius-md)",
-                    background: "var(--surface)", border: "0.5px solid var(--border-light)",
-                  }}>
-                    {/* Number of Ads */}
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
-                        Number of Ads to Generate
-                      </div>
-                      <input
-                        type="number"
-                        min={1}
-                        max={5}
-                        value={adsConfig.numAds}
-                        onChange={(e) => setNumAds(row.id, parseInt(e.target.value) || 1)}
-                        style={{
-                          width: 70, padding: "8px 10px", borderRadius: "var(--radius-sm)",
-                          border: "1px solid var(--border)", background: "var(--card-bg)",
-                          color: "var(--text)", fontSize: 13, fontFamily: "inherit", fontWeight: 500,
-                          outline: "none", transition: "border-color 0.15s",
-                        }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-                      />
-                    </div>
-
-                    {/* Video configs */}
-                    {adsConfig.videos.map((video, vIdx) => (
-                      <div key={vIdx} style={{
-                        padding: 16, borderRadius: "var(--radius-md)", marginBottom: 12,
-                        background: "var(--card-bg)", border: "0.5px solid var(--border)",
-                      }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 15 }}>🎬</span> Video {vIdx + 1} Configuration
-                        </div>
-
-                        {/* Row 1: Video Type + Duration */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
-                              Video Type
-                            </div>
-                            <select
-                              value={video.videoType}
-                              onChange={(e) => updateVideoConfig(row.id, vIdx, "videoType", e.target.value)}
-                              style={{
-                                width: "100%", padding: "9px 10px", borderRadius: "var(--radius-sm)",
-                                border: "1px solid var(--border)", background: "var(--card-bg)",
-                                color: "var(--text)", fontSize: 12, fontFamily: "inherit",
-                                outline: "none", cursor: "pointer", appearance: "auto",
-                              }}
-                            >
-                              {VIDEO_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
-                              Duration
-                            </div>
-                            <select
-                              value={video.duration}
-                              onChange={(e) => updateVideoConfig(row.id, vIdx, "duration", e.target.value)}
-                              style={{
-                                width: "100%", padding: "9px 10px", borderRadius: "var(--radius-sm)",
-                                border: "1px solid var(--border)", background: "var(--card-bg)",
-                                color: "var(--text)", fontSize: 12, fontFamily: "inherit",
-                                outline: "none", cursor: "pointer", appearance: "auto",
-                              }}
-                            >
-                              {DURATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Row 2: Audio Style + Video Style */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
-                              Audio Style
-                            </div>
-                            <select
-                              value={video.audioStyle}
-                              onChange={(e) => updateVideoConfig(row.id, vIdx, "audioStyle", e.target.value)}
-                              style={{
-                                width: "100%", padding: "9px 10px", borderRadius: "var(--radius-sm)",
-                                border: "1px solid var(--border)", background: "var(--card-bg)",
-                                color: "var(--text)", fontSize: 12, fontFamily: "inherit",
-                                outline: "none", cursor: "pointer", appearance: "auto",
-                              }}
-                            >
-                              {AUDIO_STYLES.map((a) => <option key={a} value={a}>{a}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
-                              Video Style
-                            </div>
-                            <select
-                              value={video.videoStyle}
-                              onChange={(e) => updateVideoConfig(row.id, vIdx, "videoStyle", e.target.value)}
-                              style={{
-                                width: "100%", padding: "9px 10px", borderRadius: "var(--radius-sm)",
-                                border: "1px solid var(--border)", background: "var(--card-bg)",
-                                color: "var(--text)", fontSize: 12, fontFamily: "inherit",
-                                outline: "none", cursor: "pointer", appearance: "auto",
-                              }}
-                            >
-                              {VIDEO_STYLES.map((v) => <option key={v} value={v}>{v}</option>)}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Video Idea */}
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
-                            Video Idea
-                          </div>
-                          <textarea
-                            placeholder="e.g. generate a video with offer and sales ads, customer review and about service..."
-                            value={video.videoIdea}
-                            onChange={(e) => updateVideoConfig(row.id, vIdx, "videoIdea", e.target.value)}
-                            style={{
-                              width: "100%", minHeight: 60, padding: "10px 12px",
-                              borderRadius: "var(--radius-sm)", border: "1px solid var(--border)",
-                              background: "var(--card-bg)", color: "var(--text)", fontSize: 12,
-                              fontFamily: "inherit", lineHeight: 1.6, resize: "vertical",
-                              outline: "none", transition: "border-color 0.15s",
-                            }}
-                            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-                            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Submit */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
-                      <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                        {adsConfig.numAds} video{adsConfig.numAds > 1 ? "s" : ""} configured — report data + config will be sent to the ads workflow
-                      </span>
-                      <button
-                        onClick={() => handleTriggerAds(row.id, report)}
-                        disabled={isTriggering}
-                        style={{
-                          padding: "9px 22px", borderRadius: "var(--radius-md)", border: "none",
-                          background: "linear-gradient(135deg, #f97316, #ec4899)", color: "#fff",
-                          fontSize: 12, fontWeight: 600, cursor: isTriggering ? "not-allowed" : "pointer",
-                          fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6,
-                          opacity: isTriggering ? 0.7 : 1, transition: "opacity 0.2s, transform 0.15s",
-                        }}
-                        onMouseEnter={(e) => { if (!isTriggering) e.currentTarget.style.transform = "translateY(-1px)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
-                      >
-                        {isTriggering ? <><Spinner size={12} /> Triggering...</> : "Confirm & Generate Ads →"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Market Insights Panel (toggled) */}
-                {insightsOpen && insights.length > 0 && (
-                  <div className="animate-slide-down" style={{
-                    marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10,
-                    background: "var(--surface)", borderRadius: "var(--radius-md)", padding: 14,
-                  }}>
-                    {insights.map((ins, i) => {
-                      const f = (ins.field || "").toLowerCase();
-                      const icon = f.includes("format") ? "🎬" : f.includes("angle") ? "🎯" : f.includes("framework") ? "📐" : f.includes("cta") ? "👆" : "📋";
-                      return (
-                        <div key={i} style={{ padding: "10px 12px", background: "var(--card-bg)", borderRadius: "var(--radius-sm)", border: "0.5px solid var(--border-light)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                            <span style={{ fontSize: 14 }}>{icon}</span>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                              {ins.field}
-                            </div>
-                          </div>
-                          <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, lineHeight: 1.5 }}>{ins.value}</div>
-                        </div>
-                      );
-                    })}
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: "var(--card-bg)" }}>
+                          <th style={{ padding: "12px 20px", textAlign: "left", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>Campaign</th>
+                          <th style={{ padding: "12px 20px", textAlign: "left", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>Status</th>
+                          <th style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>Spend</th>
+                          <th style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>Impr.</th>
+                          <th style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>CTR</th>
+                          <th style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>Leads</th>
+                          <th style={{ padding: "12px 20px", textAlign: "center", fontWeight: 600, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", fontSize: 11, textTransform: "uppercase" }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metaCampaignInsights.map(c => {
+                          const ins = c.insights || {};
+                          return (
+                            <tr key={c.id} style={{ borderBottom: "1px solid var(--border-light)" }}>
+                              <td style={{ padding: "16px 20px" }}>
+                                <div style={{ fontWeight: 600, color: "var(--text)" }}>{c.name}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>ID: {c.id}</div>
+                              </td>
+                              <td style={{ padding: "16px 20px" }}>
+                                <Badge
+                                  text={c.effective_status}
+                                  color={c.effective_status === "ACTIVE" ? "var(--green)" : "var(--amber)"}
+                                  bg={c.effective_status === "ACTIVE" ? "var(--green-light)" : "var(--amber-light)"}
+                                />
+                              </td>
+                              <td style={{ padding: "16px 20px", textAlign: "right", fontWeight: 600 }}>
+                                ${parseFloat(ins.spend || 0).toFixed(2)}
+                              </td>
+                              <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                                {parseFloat(ins.impressions || "0").toLocaleString()}
+                              </td>
+                              <td style={{ padding: "16px 20px", textAlign: "right", color: "var(--primary)", fontWeight: 600 }}>
+                                {parseFloat(ins.inline_link_click_ctr || 0).toFixed(2)}%
+                              </td>
+                              <td style={{ padding: "16px 20px", textAlign: "right", fontWeight: 600 }}>
+                                {parseFloat(ins.leads || "0").toLocaleString()}
+                              </td>
+                              <td style={{ padding: "16px 20px", textAlign: "center" }}>
+                                <button
+                                  onClick={() => setSelectedCampaignForReports(c)}
+                                  style={{
+                                    padding: "6px 12px", borderRadius: "10px", border: "1px solid var(--border)",
+                                    background: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500,
+                                    color: "var(--primary)", transition: "all 0.15s"
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--primary-light)"}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = "#fff"}
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </Card>
-            );
-          })}
-
-          {/* ── FULL REPORT MODAL ── */}
-          {sbModalReport && (() => {
-            const { report } = sbModalReport;
-            const competitors = [...(report.competitors_table || [])].sort((a, b) => {
-              const av = a[sbSortField], bv = b[sbSortField];
-              if (typeof av === "number") return sbSortDir === "desc" ? bv - av : av - bv;
-              return sbSortDir === "desc" ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv));
-            });
-            const gaps = [...(report.gaps_table || [])].sort((a, b) => {
-              const order = { high: 0, medium: 1, low: 2 };
-              return (order[a.priority] ?? 3) - (order[b.priority] ?? 3);
-            });
-            const modalTabs = [
-              { id: "competitors", label: "Competitors" },
-              { id: "hooks", label: "Hooks" },
-              { id: "insights", label: "Market Insights" },
-              { id: "gaps", label: "Gaps" },
-            ];
-
-            return (
-              <div
-                onClick={() => setSbModalReport(null)}
-                style={{
-                  position: "fixed", inset: 0, zIndex: 1000,
-                  background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: 20, animation: "fadeIn 0.2s ease-out",
-                }}
-              >
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="animate-scale-in"
-                  style={{
-                    width: "100%", maxWidth: 820, maxHeight: "85vh",
-                    background: "var(--card-bg)", border: "0.5px solid var(--border)",
-                    borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-lg)",
-                    display: "flex", flexDirection: "column", overflow: "hidden",
-                  }}
-                >
-                  {/* Modal header */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "0.5px solid var(--border)" }}>
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>Full Report</div>
-                    <button
-                      onClick={() => setSbModalReport(null)}
-                      style={{
-                        width: 28, height: 28, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)",
-                        background: "var(--surface)", cursor: "pointer", display: "flex", alignItems: "center",
-                        justifyContent: "center", fontSize: 14, color: "var(--text-muted)", fontFamily: "inherit",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-hover)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  {/* Modal tabs */}
-                  <div style={{ display: "flex", gap: 4, padding: "12px 20px 0", borderBottom: "0.5px solid var(--border)" }}>
-                    {modalTabs.map((mt) => (
-                      <button
-                        key={mt.id}
-                        onClick={() => setSbModalTab(mt.id)}
-                        style={{
-                          padding: "8px 14px", fontSize: 12, fontWeight: sbModalTab === mt.id ? 600 : 400,
-                          borderRadius: "var(--radius-sm) var(--radius-sm) 0 0",
-                          border: "none", cursor: "pointer", fontFamily: "inherit",
-                          background: sbModalTab === mt.id ? "var(--primary-light)" : "transparent",
-                          color: sbModalTab === mt.id ? "var(--primary)" : "var(--text-muted)",
-                          transition: "all 0.15s",
-                        }}
-                      >
-                        {mt.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Modal content */}
-                  <div style={{ flex: 1, overflow: "auto", padding: 20 }}>
-
-                    {/* TAB: Competitors */}
-                    {sbModalTab === "competitors" && (
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
-                          <thead>
-                            <tr style={{ textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
-                              <th style={{ padding: "8px 10px" }}>#</th>
-                              <th style={{ padding: "8px 10px", cursor: "pointer" }} onClick={() => toggleSbSort("name")}>
-                                Name {sbSortField === "name" && (sbSortDir === "desc" ? "↓" : "↑")}
-                              </th>
-                              <th style={{ padding: "8px 10px", cursor: "pointer" }} onClick={() => toggleSbSort("ads")}>
-                                Ads {sbSortField === "ads" && (sbSortDir === "desc" ? "↓" : "↑")}
-                              </th>
-                              <th style={{ padding: "8px 10px", cursor: "pointer" }} onClick={() => toggleSbSort("score")}>
-                                Score {sbSortField === "score" && (sbSortDir === "desc" ? "↓" : "↑")}
-                              </th>
-                              <th style={{ padding: "8px 10px" }}>Threat</th>
-                              <th style={{ padding: "8px 10px" }}>Angle</th>
-                              <th style={{ padding: "8px 10px" }}>Hook</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {competitors.map((c, i) => (
-                              <tr key={i} style={{ borderTop: "0.5px solid var(--border-light)", background: i % 2 === 0 ? "transparent" : "var(--surface)" }}>
-                                <td style={{ padding: "10px", color: "var(--text-muted)" }}>{i + 1}</td>
-                                <td style={{ padding: "10px", fontWeight: 500 }}>{c.name}</td>
-                                <td style={{ padding: "10px", color: "var(--text-body)" }}>{c.ads}</td>
-                                <td style={{ padding: "10px" }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <div style={{ width: 50, height: 5, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
-                                      <div style={{
-                                        height: "100%", borderRadius: 3,
-                                        width: `${((c.score || 0) / 12) * 100}%`,
-                                        background: c.score >= 9 ? "var(--red-error)" : c.score >= 6 ? "var(--amber)" : "var(--green)",
-                                      }} />
-                                    </div>
-                                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{c.score}/12</span>
-                                  </div>
-                                </td>
-                                <td style={{ padding: "10px" }}>
-                                  <Badge
-                                    text={c.threat}
-                                    color={c.threat === "high" ? "var(--red)" : c.threat === "medium" ? "var(--amber)" : "var(--green)"}
-                                    bg={c.threat === "high" ? "var(--red-light)" : c.threat === "medium" ? "var(--amber-light)" : "var(--green-light)"}
-                                  />
-                                </td>
-                                <td style={{ padding: "10px", fontSize: 11, color: "var(--text-body)" }}>{c.angle}</td>
-                                <td style={{ padding: "10px", fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>{c.hook}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {competitors.length === 0 && (
-                          <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)", fontSize: 13 }}>No competitors data</div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* TAB: Hooks */}
-                    {sbModalTab === "hooks" && (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        {(report.hooks_table || []).map((h, i) => (
-                          <div key={i} style={{
-                            padding: 16, borderRadius: "var(--radius-md)", background: "var(--surface)",
-                            border: "0.5px solid var(--border-light)", transition: "box-shadow 0.15s",
-                          }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{h.pattern}</span>
-                              <Badge
-                                text={h.score}
-                                color={
-                                  (h.score || "").toLowerCase() === "strong" ? "var(--green)" :
-                                    (h.score || "").toLowerCase() === "moderate" ? "var(--amber)" : "var(--text-muted)"
-                                }
-                                bg={
-                                  (h.score || "").toLowerCase() === "strong" ? "var(--green-light)" :
-                                    (h.score || "").toLowerCase() === "moderate" ? "var(--amber-light)" : "var(--surface)"
-                                }
-                              />
-                            </div>
-                            <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--amber)", marginBottom: 6, lineHeight: 1.5 }}>
-                              &ldquo;{h.example}&rdquo;
-                            </p>
-                            <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>{h.reason}</p>
-                          </div>
-                        ))}
-                        {(!report.hooks_table || report.hooks_table.length === 0) && (
-                          <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 30, color: "var(--text-muted)", fontSize: 13 }}>No hooks data</div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* TAB: Market Insights */}
-                    {sbModalTab === "insights" && (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        {(report.market_insights_table || []).map((ins, i) => {
-                          const f = (ins.field || "").toLowerCase();
-                          const icon = f.includes("format") ? "🎬" : f.includes("angle") ? "🎯" : f.includes("framework") ? "📐" : f.includes("cta") ? "👆" : "📋";
-                          return (
-                            <div key={i} style={{
-                              padding: 18, borderRadius: "var(--radius-md)", background: "var(--surface)",
-                              border: "0.5px solid var(--border-light)",
-                            }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                                <span style={{ fontSize: 18 }}>{icon}</span>
-                                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{ins.field}</span>
-                              </div>
-                              <p style={{ fontSize: 12, color: "var(--text-body)", lineHeight: 1.6 }}>{ins.value}</p>
-                            </div>
-                          );
-                        })}
-                        {(!report.market_insights_table || report.market_insights_table.length === 0) && (
-                          <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 30, color: "var(--text-muted)", fontSize: 13 }}>No market insights data</div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* TAB: Gaps & Opportunities */}
-                    {sbModalTab === "gaps" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {gaps.map((g, i) => (
-                          <div key={i} style={{
-                            padding: 16, borderRadius: "var(--radius-md)", background: "var(--surface)",
-                            border: "0.5px solid var(--border-light)",
-                          }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                              <Badge
-                                text={g.priority?.toUpperCase()}
-                                color={g.priority === "high" ? "var(--red)" : g.priority === "medium" ? "var(--amber)" : "var(--green)"}
-                                bg={g.priority === "high" ? "var(--red-light)" : g.priority === "medium" ? "var(--amber-light)" : "var(--green-light)"}
-                              />
-                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{g.gap}</span>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6, paddingLeft: 2 }}>
-                              <span style={{ fontSize: 13 }}>💡</span>
-                              <p style={{ fontSize: 12, color: "var(--text-body)", lineHeight: 1.5 }}>{g.opportunity}</p>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 6, paddingLeft: 2 }}>
-                              <span style={{ fontSize: 13 }}>📈</span>
-                              <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{g.impact}</p>
-                            </div>
-                          </div>
-                        ))}
-                        {gaps.length === 0 && (
-                          <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)", fontSize: 13 }}>No gaps data</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Toast notifications */}
-          {sbToasts.length > 0 && (
-            <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 1100, display: "flex", flexDirection: "column", gap: 8 }}>
-              {sbToasts.map((t) => (
-                <div
-                  key={t.id}
-                  className="animate-slide-up"
-                  onClick={() => setSbToasts((prev) => prev.filter((x) => x.id !== t.id))}
-                  style={{
-                    padding: "10px 16px", borderRadius: "var(--radius-md)",
-                    background: t.type === "success" ? "var(--green)" : "var(--red-error)",
-                    color: "#fff", fontSize: 12, fontWeight: 500, cursor: "pointer",
-                    boxShadow: "var(--shadow-md)",
-                  }}
-                >
-                  {t.message}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {reportStatus === "error" && (
-            <div style={{ marginTop: 8, fontSize: 12, color: "var(--red-strong)" }}>
-              Could not reach n8n: {webhookError}. Please try again.
-            </div>
+            </>
           )}
         </div>
       )}
+
+      {/* ── REPORTS AD DETAILS MODAL ── */}
+      {selectedCampaignForReports && (() => {
+        const c = selectedCampaignForReports;
+        let allAds = [];
+        if (c.adsets && c.adsets.length > 0) {
+          c.adsets.forEach(adset => {
+            if (adset.ads && adset.ads.length > 0) {
+              allAds.push(...adset.ads);
+            }
+          });
+        }
+
+        return (
+          <div
+            onClick={() => setSelectedCampaignForReports(null)}
+            className="animate-in fade-in duration-300"
+            style={{
+              position: "fixed", inset: 0, zIndex: 1000,
+              background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: 20
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="animate-scale-in"
+              style={{
+                width: "100%", maxWidth: 900, maxHeight: "85vh",
+                background: "var(--card-bg)", border: "0.5px solid var(--border)",
+                borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-lg)",
+                display: "flex", flexDirection: "column", overflow: "hidden"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>Campaign Creatives & Breakdown</div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                    {c.name} • {allAds.length} attached creative{allAds.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedCampaignForReports(null)}
+                  style={{
+                    width: 32, height: 32, borderRadius: "50%", border: "1px solid var(--border)",
+                    background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, transition: "background 0.15s"
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-hover)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+                >✕</button>
+              </div>
+
+              <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+                {allAds.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}>🖼️</div>
+                    <div style={{ fontSize: 15, fontWeight: 500 }}>No ad creatives found for this campaign.</div>
+                  </div>
+                ) : (
+                  allAds.map(ad => {
+                    const ins = ad.insights || {};
+                    const thumbUrl = ad.creative?.thumbnail_url || null;
+                    return (
+                      <div key={ad.id} style={{
+                        display: "flex", gap: 16, background: "var(--surface)", border: "1px solid var(--border-light)",
+                        borderRadius: "var(--radius-md)", padding: 16, alignItems: "center"
+                      }}>
+                        <div style={{ 
+                          width: 100, height: 100, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)",
+                          background: "var(--card-bg)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0
+                        }}>
+                          {thumbUrl ? (
+                            <img src={thumbUrl} alt="Ad Thumbnail" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ fontSize: 24 }}>🎬</div>
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>{ad.name}</div>
+                            <Badge
+                              text={ad.effective_status}
+                              color={ad.effective_status === "ACTIVE" ? "var(--green)" : "var(--amber)"}
+                              bg={ad.effective_status === "ACTIVE" ? "var(--green-light)" : "var(--amber-light)"}
+                            />
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Ad ID: {ad.id}</div>
+                          
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                            <div style={{ background: "#fff", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-light)" }}>
+                              <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>Spend</div>
+                              <div style={{ fontSize: 14, fontWeight: 700 }}>${parseFloat(ins.spend || 0).toFixed(2)}</div>
+                            </div>
+                            <div style={{ background: "#fff", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-light)" }}>
+                              <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>Impressions</div>
+                              <div style={{ fontSize: 14, fontWeight: 700 }}>{parseFloat(ins.impressions || "0").toLocaleString()}</div>
+                            </div>
+                            <div style={{ background: "#fff", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-light)" }}>
+                              <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>CTR</div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--primary)" }}>{parseFloat(ins.inline_link_click_ctr || 0).toFixed(2)}%</div>
+                            </div>
+                            <div style={{ background: "#fff", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-light)" }}>
+                              <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>Leads</div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>{parseFloat(ins.leads || "0").toLocaleString()}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══════════════════════════════════════════════════════
           SOCIAL-DASH — Creator Studio Section
