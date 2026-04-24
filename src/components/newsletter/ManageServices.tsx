@@ -20,54 +20,37 @@ export default function ManageServices() {
     setError("");
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleAdd();
-  };
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-      <div className="mb-12 text-center lg:text-left">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
-          Manage Services
-        </h1>
-        <p className="text-slate-500 mt-3 text-lg sm:text-xl max-w-3xl">
-          Configure clinical specialties and service options for the newsletter generator.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-12 items-start">
-        {/* Left: Add service */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 border border-gray-100 p-8 flex flex-col gap-8 lg:sticky lg:top-8">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="max-w-7xl mx-auto pb-20 animate-fade-in">
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 items-start">
+        {/* Left: Add form */}
+        <div className="section-card" style={{ padding: '28px' }}>
+          <div className="w-12 h-12 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center mb-6 shadow-lg shadow-[var(--primary-light)]">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-bold text-[var(--text-muted)] mb-2 uppercase tracking-wider">
                 New Service Name
               </label>
               <input
                 type="text"
                 value={newService}
-                onChange={(e) => { setNewService(e.target.value); setError(""); }}
-                onKeyDown={handleKeyDown}
-                placeholder="e.g. Liposuction Treatment"
-                className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl text-base text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all"
+                onChange={(e) => setNewService(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                placeholder="e.g. Skin Rejuvenation"
+                className="w-full px-4 py-3 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] text-[var(--text)] bg-white placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] transition-all shadow-sm"
               />
             </div>
             
             <button
               onClick={handleAdd}
-              disabled={!newService.trim()}
-              className="w-full py-4 px-6 bg-indigo-600 text-white text-base font-bold rounded-2xl hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-indigo-200 flex items-center justify-center gap-3 transform active:scale-[0.98]"
+              className="w-full py-3.5 rounded-[var(--radius-md)] bg-[var(--primary)] text-white text-[14px] font-bold hover:bg-[var(--primary-dark)] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Service
+              <span className="text-xl">+</span> Add Service
             </button>
 
             {error && (

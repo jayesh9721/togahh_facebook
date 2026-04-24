@@ -91,42 +91,34 @@ export default function CreateCampaign() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-      <div className="mb-12 text-center lg:text-left">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">Create Campaign</h1>
-        <p className="text-slate-500 mt-3 text-lg sm:text-xl max-w-3xl">
-          Configure and launch your newsletter campaign with modern audience and send controls.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.35fr] gap-12 items-start">
+    <div className="max-w-7xl mx-auto pb-20 animate-fade-in">
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 items-start">
         {/* Left: form */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 border border-gray-100 p-8 flex flex-col gap-8 sticky top-8">
-          
+        <div className="section-card sticky top-8" style={{ padding: '28px' }}>
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wider">
-                Template ID <span className="text-red-500">*</span>
+              <label className="block text-[11px] font-bold text-[var(--text-muted)] mb-2 uppercase tracking-wider">
+                Template ID <span className="text-[var(--red)]">*</span>
               </label>
               <input
                 type="text"
                 value={templateId}
                 onChange={(e) => setTemplateId(e.target.value)}
                 placeholder="Paste the generated template ID..."
-                className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl text-base font-mono text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all"
+                className="w-full px-4 py-3 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] font-mono text-[var(--text)] bg-white placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] transition-all shadow-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wider">
-                Campaign Name <span className="text-red-500">*</span>
+              <label className="block text-[11px] font-bold text-[var(--text-muted)] mb-2 uppercase tracking-wider">
+                Campaign Name <span className="text-[var(--red)]">*</span>
               </label>
               <input
                 type="text"
                 value={campaignName}
                 onChange={(e) => setCampaignName(e.target.value)}
-                placeholder="e.g. Weekly Health Update — May 2026"
-                className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl text-base text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all"
+                placeholder="e.g. Weekly Health Update..."
+                className="w-full px-4 py-3 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] text-[var(--text)] bg-white placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] transition-all shadow-sm"
               />
             </div>
 
@@ -139,7 +131,7 @@ export default function CreateCampaign() {
                   <select
                     value={subscribers}
                     onChange={(e) => setSubscribers(e.target.value)}
-                    className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl text-base text-gray-900 bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 appearance-none transition-all pr-12"
+                    className="w-full px-4 py-3 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] text-[var(--text)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] appearance-none transition-all pr-10 shadow-sm"
                   >
                     <option value="" disabled>Select group</option>
                     {SUBSCRIBER_OPTIONS.map((opt) => (
@@ -176,30 +168,27 @@ export default function CreateCampaign() {
           </div>
 
           <button
-            onClick={handleCreate}
-            disabled={!canSubmit || status === "loading"}
-            className="w-full py-4 px-6 bg-indigo-600 text-white text-base font-bold rounded-2xl hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-indigo-200 flex items-center justify-center gap-3 transform active:scale-[0.98]"
-          >
-            {status === "loading" ? (
-              <>
-                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                Launching Campaign...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-                Launch Campaign
-              </>
-            )}
-          </button>
+              onClick={handleCreate}
+              disabled={!canSubmit || status === "loading"}
+              className={`w-full py-3.5 mt-8 rounded-[var(--radius-md)] text-[14px] font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md hover:shadow-lg ${
+                !canSubmit || status === "loading"
+                  ? "bg-[var(--border)] text-[var(--text-dim)] cursor-not-allowed"
+                  : "bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)]"
+              }`}
+            >
+              {status === "loading" ? (
+                <>
+                  <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Launching Campaign...
+                </>
+              ) : "🚀 Launch Campaign"}
+            </button>
 
           {status === "success" && (
-            <div className="bg-green-50 border-2 border-green-100 rounded-2xl p-6 shadow-sm shadow-green-50">
+            <div className="bg-green-50 border-2 border-green-100 rounded-2xl p-6 mt-6 shadow-sm shadow-green-50">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                   <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +223,7 @@ export default function CreateCampaign() {
           )}
 
           {status === "error" && (
-            <div className="bg-red-50 border-2 border-red-100 rounded-2xl p-6 text-center">
+            <div className="bg-red-50 border-2 border-red-100 rounded-2xl p-6 text-center mt-6">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -246,14 +235,12 @@ export default function CreateCampaign() {
           )}
         </div>
 
-        {/* Right: history */}
-        <div className="bg-white rounded-[40px] shadow-2xl shadow-slate-200 border border-slate-200 p-8 flex flex-col gap-6 min-h-[520px]">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-gray-800">Recent Campaigns</h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold">
-                {history.length} Total
-              </span>
+        {/* Right: History */}
+        <div className="section-card" style={{ padding: 0, overflow: 'hidden', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)' }}>Recent Campaigns</span>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary)', background: 'var(--primary-light)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>{history.length} Total</span>
             </div>
             {history.length > 0 && (
               <button
@@ -264,17 +251,17 @@ export default function CreateCampaign() {
               </button>
             )}
           </div>
-
-          <div className="flex-1 overflow-auto">
+          
+          <div style={{ flex: 1, padding: '24px' }}>
             {history.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-gray-400 py-24">
-                <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              <div className="h-full flex flex-col items-center justify-center text-center py-20">
+                <div className="w-16 h-16 rounded-2xl bg-[var(--surface)] border border-[var(--border-light)] flex items-center justify-center mb-4 text-[var(--text-dim)]">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <p className="text-lg font-medium text-gray-500">No active campaigns</p>
-                <p className="text-sm text-gray-400 mt-1">Configure the form on the left to start.</p>
+                <h4 className="text-base font-bold text-[var(--text)] mb-1">No active campaigns</h4>
+                <p className="text-sm text-[var(--text-muted)] max-w-[240px]">Configure the form on the left to start.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">

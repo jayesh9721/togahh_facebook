@@ -23,6 +23,12 @@ import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
 import CampaignSetup from "./CampaignSetup";
 import SocialDash from "./SocialDash";
+// Newsletter Components
+import GenerateNewsletter from "@/components/newsletter/GenerateNewsletter";
+import CreateCampaign from "@/components/newsletter/CreateCampaign";
+import NewsletterHistory from "@/components/newsletter/NewsletterHistory";
+import ManageServices from "@/components/newsletter/ManageServices";
+import { NewsletterProviders } from "@/components/newsletter/Providers";
 import "./globals.css";
 import "./dashboard.css";
 
@@ -68,6 +74,7 @@ const TOPICS = [
 export default function Dashboard() {
   const router = useRouter();
   const [tab, setTab] = useState("overview");
+  const [newsletterSubTab, setNewsletterSubTab] = useState("generate");
   const [selectedTopic, setSelectedTopic] = useState(TOPICS[1]);
   const [user, setUser] = useState(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
@@ -3478,7 +3485,65 @@ export default function Dashboard() {
       {/* ═══════════════════════════════════════════════════════
           NEWSLETTER — Redirect to dedicated section
       ═══════════════════════════════════════════════════════ */}
-      {tab === "newsletter" && <NewsletterRedirect />}
+      {/* ── NEWSLETTER SECTIONS ── */}
+      {tab === "newsletter" && (
+        <NewsletterProviders>
+          <div className="mb-8 px-4 sm:px-0">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
+              <div>
+                <h1 className="text-2xl font-bold text-[var(--text)] mb-2">
+                  {newsletterSubTab === "generate" && "Generate Newsletter"}
+                  {newsletterSubTab === "campaign" && "Newsletter Campaigns"}
+                  {newsletterSubTab === "history" && "Newsletter History"}
+                  {newsletterSubTab === "services" && "Manage Services"}
+                </h1>
+                <p className="text-[var(--text-muted)] text-sm">
+                  {newsletterSubTab === "generate" && "AI-powered clinical content generation for your patient newsletters."}
+                  {newsletterSubTab === "campaign" && "Schedule and send your generated newsletters to your subscribers."}
+                  {newsletterSubTab === "history" && "Access and reuse your previously generated medical newsletters."}
+                  {newsletterSubTab === "services" && "Configure the medical specialties and services for your practice."}
+                </p>
+              </div>
+              
+              <div style={{ display: "flex", gap: 8, background: "var(--surface)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
+                {[
+                  { id: "generate", label: "Generate", icon: "📧" },
+                  { id: "campaign", label: "Campaigns", icon: "📬" },
+                  { id: "history", label: "History", icon: "📜" },
+                  { id: "services", label: "Services", icon: "⚙️" },
+                ].map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => setNewsletterSubTab(sub.id)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      border: "none",
+                      background: newsletterSubTab === sub.id ? "#fff" : "transparent",
+                      color: newsletterSubTab === sub.id ? "var(--primary)" : "var(--text-muted)",
+                      fontWeight: newsletterSubTab === sub.id ? 700 : 500,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "all 0.2s",
+                      boxShadow: newsletterSubTab === sub.id ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+                    }}
+                  >
+                    <span>{sub.icon}</span> {sub.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {newsletterSubTab === "generate" && <GenerateNewsletter />}
+          {newsletterSubTab === "campaign" && <CreateCampaign />}
+          {newsletterSubTab === "history" && <NewsletterHistory />}
+          {newsletterSubTab === "services" && <ManageServices />}
+        </NewsletterProviders>
+      )}
 
       {/* ═══════════════════════════════════════════════════════
           AD DETAILS MODAL (POP-UP)
