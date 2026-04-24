@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s http://localhost:3000)",
+      "PowerShell(Stop-Process -Id 20644 -Force -ErrorAction SilentlyContinue)",
+      "Bash(rm -rf \"c:/Users/ASUS/OneDrive/Desktop/version/src/app/newsletter\" \"c:/Users/ASUS/OneDrive/Desktop/version/src/components/newsletter\")",
+      "Bash(rm -f \"c:/Users/ASUS/OneDrive/Desktop/version/src/app/NewsletterTab.js\" \"c:/Users/ASUS/OneDrive/Desktop/version/src/app/OutreachTab.js\" \"c:/Users/ASUS/OneDrive/Desktop/version/src/context/NewsletterContext.tsx\" \"c:/Users/ASUS/OneDrive/Desktop/version/src/context/NewsletterHistoryContext.tsx\" \"c:/Users/ASUS/OneDrive/Desktop/version/src/context/CampaignContext.tsx\" \"c:/Users/ASUS/OneDrive/Desktop/version/src/context/ServicesContext.tsx\" \"c:/Users/ASUS/OneDrive/Desktop/version/src/lib/services-store.ts\")"
     ]
   }
 }
