@@ -43,19 +43,19 @@ export default function EmailPreview({ data }: { data: NewsletterData }) {
   const industryUpdate = data.industryUpdate ? parseBullets(data.industryUpdate) : null;
 
   return (
-    <div style={{ 
-      fontFamily: 'Inter, system-ui, sans-serif', 
-      color: '#374151', 
-      backgroundColor: '#f3f4f6', 
-      borderRadius: '16px', 
+    <div style={{
+      fontFamily: 'Inter, system-ui, sans-serif',
+      color: '#374151',
+      backgroundColor: '#f3f4f6',
+      borderRadius: '16px',
       overflow: 'hidden',
       border: '1px solid #e5e7eb'
     }}>
 
       {/* Email client chrome */}
-      <div style={{ 
-        backgroundColor: '#ffffff', 
-        borderBottom: '1px solid #e5e7eb', 
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderBottom: '1px solid #e5e7eb',
         padding: '12px 20px',
         display: 'flex',
         flexDirection: 'column',
@@ -76,21 +76,21 @@ export default function EmailPreview({ data }: { data: NewsletterData }) {
       </div>
 
       {/* Email body wrapper */}
-      <div style={{ backgroundColor: '#f3f4f6', padding: '32px 20px' }}>
-        <div style={{ 
-          maxWidth: '600px', 
-          margin: '0 auto', 
-          backgroundColor: '#ffffff', 
-          borderRadius: '24px', 
-          overflow: 'hidden', 
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' 
+      <div style={{ backgroundColor: '#f3f4f6', padding: '48px 32px' }}>
+        <div style={{
+          maxWidth: '600px',
+          margin: '0 auto',
+          backgroundColor: '#ffffff',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}>
 
           {/* Header banner */}
           {data.headerTitle && (
-            <div style={{ 
-              backgroundColor: '#4f46e5', 
-              padding: '48px 40px', 
+            <div style={{
+              backgroundColor: '#4f46e5',
+              padding: '48px 40px',
               textAlign: 'center',
               backgroundImage: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)'
             }}>
@@ -101,7 +101,7 @@ export default function EmailPreview({ data }: { data: NewsletterData }) {
             </div>
           )}
 
-          <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          <div style={{ padding: '56px 64px', display: 'flex', flexDirection: 'column', gap: '40px' }}>
 
             {/* Intro */}
             {data.intro && (
@@ -175,13 +175,13 @@ export default function EmailPreview({ data }: { data: NewsletterData }) {
             {/* Call to Action */}
             {data.callToAction && (
               <div style={{ textAlign: 'center', marginTop: '12px' }}>
-                <span style={{ 
-                  display: 'inline-block', 
-                  backgroundColor: '#4f46e5', 
-                  color: '#ffffff', 
-                  fontSize: '14px', 
-                  fontWeight: 700, 
-                  padding: '16px 40px', 
+                <span style={{
+                  display: 'inline-block',
+                  backgroundColor: '#4f46e5',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  padding: '16px 40px',
                   borderRadius: '100px',
                   boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.4)',
                   cursor: 'pointer'

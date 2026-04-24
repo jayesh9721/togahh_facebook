@@ -201,7 +201,7 @@ export default function GenerateNewsletter() {
   const hasContent = (status === "success" || status === "rejected") && (newsletter || rawFallback);
 
   return (
-    <div className="max-w-7xl mx-auto pb-20 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-8 pb-20 animate-fade-in">
       <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-8 items-start">
         {/* Left: inputs */}
         <div className="sticky top-24 space-y-6">
@@ -215,7 +215,7 @@ export default function GenerateNewsletter() {
             }}
           >
             <div>
-              <label className="block text-[11px] font-bold text-[var(--text-muted)] mb-4 uppercase tracking-[0.2em]">
+              <label className="block text-[14px] font-black text-gray-900 mb-6 uppercase tracking-[0.2em] pl-1">
                 Step 1: Select Specialty
               </label>
               <div className="grid grid-cols-1 gap-4">
@@ -228,23 +228,23 @@ export default function GenerateNewsletter() {
                       transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                       borderWidth: '2px'
                     }}
-                    className={`w-full text-left px-5 py-4 rounded-[var(--radius-md)] text-[14px] font-semibold flex items-center justify-between group transition-all duration-300 ${
+                    className={`w-full text-left px-8 py-6 rounded-2xl text-[18px] font-bold flex items-center justify-between group transition-all duration-300 ${
                       selectedService === service
-                        ? "border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary-dark)] shadow-sm"
-                        : "border-transparent bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-900 shadow-xl shadow-indigo-100"
+                        : "border-transparent bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                   >
-                    <span className="flex items-center gap-4">
+                    <span className="flex items-center gap-6">
                       <span 
-                        className={`w-3 h-3 rounded-full transition-all duration-500 ${
-                          selectedService === service ? "bg-indigo-600 scale-150 shadow-[0_0_15px_rgba(79,70,229,0.6)]" : "bg-gray-300"
+                        className={`w-4 h-4 rounded-full transition-all duration-500 ${
+                          selectedService === service ? "bg-indigo-600 scale-150 shadow-[0_0_20px_rgba(79,70,229,0.7)]" : "bg-gray-300"
                         }`} 
                       />
                       {service}
                     </span>
                     {selectedService === service && (
-                      <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-                        <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       </div>
@@ -255,30 +255,30 @@ export default function GenerateNewsletter() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-[var(--text-muted)] mb-4 uppercase tracking-[0.2em]">
+              <label className="block text-[14px] font-black text-gray-900 mb-6 uppercase tracking-[0.2em] pl-1">
                 Step 2: Define Topic
               </label>
               <textarea
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="e.g. Advantages of advanced Hair Transplant..."
-                className="w-full h-32 px-5 py-4 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] text-[var(--text)] bg-white placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] transition-all resize-none shadow-sm"
+                className="w-full h-40 px-8 py-6 border-2 border-gray-100 rounded-2xl text-[16px] text-gray-900 bg-gray-50/50 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all resize-none shadow-sm"
               />
             </div>
 
             <button
               onClick={handleGenerate}
               disabled={isLoading || !selectedService || !topic.trim()}
-              className={`w-full py-4 rounded-[var(--radius-md)] text-[14px] font-bold flex items-center justify-center gap-3 transition-all duration-300 ${
+              className={`w-full py-8 rounded-3xl text-[20px] font-black flex items-center justify-center gap-4 transition-all duration-300 ${
                 isLoading || !selectedService || !topic.trim()
-                  ? "bg-[var(--border)] text-[var(--text-dim)] cursor-not-allowed"
-                  : "bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95"
               }`}
             >
               {isLoading ? (
-                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> CRAFTING...</>
+                <><div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" /> CRAFTING...</>
               ) : (
-                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> GENERATE NOW</>
+                <><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> GENERATE NOW</>
               )}
             </button>
           </div>
@@ -433,16 +433,16 @@ export default function GenerateNewsletter() {
                   background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   boxShadow: '0 20px 40px -10px rgba(16, 185, 129, 0.4)'
                 }}
-                className="flex-1 py-6 text-white text-lg font-black rounded-[32px] hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-4"
+                className="flex-1 py-7 text-white text-xl font-bold rounded-[32px] hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-4"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                 AUTHORIZE & SEND
               </button>
               <button
                 onClick={() => setStatus("rejected")}
-                className="flex-1 py-6 bg-white text-gray-300 border-2 border-gray-100 text-lg font-black rounded-[32px] hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-[0.97] flex items-center justify-center gap-4"
+                className="flex-1 py-7 bg-white text-gray-400 border-2 border-gray-100 text-xl font-bold rounded-[32px] hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-[0.97] flex items-center justify-center gap-4"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                 REVISE CONTENT
               </button>
             </div>

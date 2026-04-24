@@ -91,47 +91,50 @@ export default function CreateCampaign() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto pb-20 animate-fade-in">
-      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 items-start">
+    <div className="max-w-7xl mx-auto px-8 pb-20 animate-fade-in">
+      <div className="grid grid-cols-1 lg:grid-cols-[450px_1fr] gap-12 items-start">
         {/* Left: form */}
-        <div className="section-card sticky top-8" style={{ padding: '28px' }}>
-          <div className="space-y-6">
-            <div>
-              <label className="block text-[11px] font-bold text-[var(--text-muted)] mb-2 uppercase tracking-wider">
-                Template ID <span className="text-[var(--red)]">*</span>
-              </label>
-              <input
-                type="text"
-                value={templateId}
-                onChange={(e) => setTemplateId(e.target.value)}
-                placeholder="Paste the generated template ID..."
-                className="w-full px-4 py-3 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] font-mono text-[var(--text)] bg-white placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] transition-all shadow-sm"
-              />
-            </div>
+        <div className="bg-white p-14 shadow-2xl rounded-3xl border border-gray-100">
+            <div className="flex flex-col gap-6">
+              <div>
+                <label className="block text-[13px] font-bold text-gray-700 mb-3 uppercase tracking-wider pl-1">
+                  Template ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={templateId}
+                  onChange={(e) => setTemplateId(e.target.value)}
+                  placeholder="Paste the generated template ID..."
+                  className="w-full border-2 border-gray-100 rounded-2xl text-[15px] font-mono text-gray-800 bg-gray-50/50 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all"
+                  style={{ padding: '18px 24px' }}
+                />
+              </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-[var(--text-muted)] mb-2 uppercase tracking-wider">
-                Campaign Name <span className="text-[var(--red)]">*</span>
+              <label className="block text-[13px] font-bold text-gray-700 mb-3 uppercase tracking-wider pl-1">
+                Campaign Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={campaignName}
                 onChange={(e) => setCampaignName(e.target.value)}
                 placeholder="e.g. Weekly Health Update..."
-                className="w-full px-4 py-3 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] text-[var(--text)] bg-white placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] transition-all shadow-sm"
+                className="w-full border-2 border-gray-100 rounded-2xl text-[15px] text-gray-800 bg-gray-50/50 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all"
+                style={{ padding: '18px 24px' }}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wider">
+                <label className="block text-[13px] font-bold text-gray-700 mb-3 uppercase tracking-wider pl-1">
                   Subscribers <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select
                     value={subscribers}
                     onChange={(e) => setSubscribers(e.target.value)}
-                    className="w-full px-4 py-3 border border-[var(--border)] rounded-[var(--radius-md)] text-[14px] text-[var(--text)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)] appearance-none transition-all pr-10 shadow-sm"
+                    className="w-full border-2 border-gray-100 rounded-2xl text-[15px] text-gray-800 bg-gray-50/50 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 appearance-none transition-all pr-12"
+                    style={{ padding: '18px 24px' }}
                   >
                     <option value="" disabled>Select group</option>
                     {SUBSCRIBER_OPTIONS.map((opt) => (
@@ -145,14 +148,15 @@ export default function CreateCampaign() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wider">
+                <label className="block text-[13px] font-bold text-gray-700 mb-3 uppercase tracking-wider pl-1">
                   Daily Send Limit <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select
                     value={dailyLimit}
                     onChange={(e) => setDailyLimit(Number(e.target.value))}
-                    className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl text-base text-gray-900 bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 appearance-none transition-all pr-12"
+                    className="w-full border-2 border-gray-100 rounded-2xl text-[15px] text-gray-800 bg-gray-50/50 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 appearance-none transition-all pr-12"
+                    style={{ padding: '18px 24px' }}
                   >
                     <option value="" disabled>Select limit</option>
                     {DAILY_LIMIT_OPTIONS.map((n) => (
@@ -165,57 +169,48 @@ export default function CreateCampaign() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <button
+            <button
               onClick={handleCreate}
               disabled={!canSubmit || status === "loading"}
-              className={`w-full py-3.5 mt-8 rounded-[var(--radius-md)] text-[14px] font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-md hover:shadow-lg ${
+              className={`w-full py-6 mt-4 rounded-2xl text-[16px] font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-md ${
                 !canSubmit || status === "loading"
-                  ? "bg-[var(--border)] text-[var(--text-dim)] cursor-not-allowed"
-                  : "bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)]"
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg active:scale-95"
               }`}
             >
               {status === "loading" ? (
                 <>
-                  <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Launching Campaign...
+                  <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  Launching...
                 </>
-              ) : "🚀 Launch Campaign"}
+              ) : (
+                <><span className="text-2xl">🚀</span> Launch Campaign</>
+              )}
             </button>
+          </div>
 
           {status === "success" && (
-            <div className="bg-green-50 border-2 border-green-100 rounded-2xl p-6 mt-6 shadow-sm shadow-green-50">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <div className="border-4 border-green-600 bg-green-50 p-10 mt-16 shadow-[8px_8px_0px_0px_rgba(22,163,74,1)]">
+              <div className="flex items-center gap-6 mb-8">
+                <div className="w-12 h-12 bg-green-600 flex items-center justify-center text-white">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <p className="text-lg font-bold text-green-800">Campaign Launched!</p>
+                <p className="text-3xl font-black text-green-900">MISSION SUCCESS</p>
               </div>
               {lastCampaignId && (
-                <div className="bg-white border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div className="bg-white border-4 border-green-600 p-6 flex items-center justify-between gap-6">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Campaign ID</p>
-                    <p className="text-sm font-mono font-bold text-gray-900 truncate">{lastCampaignId}</p>
+                    <p className="text-[12px] font-black text-green-700 uppercase tracking-widest mb-2">Campaign Identifier</p>
+                    <p className="text-xl font-mono font-black text-black truncate">{lastCampaignId}</p>
                   </div>
                   <button
                     onClick={() => handleCopyId(lastCampaignId)}
-                    className="shrink-0 p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                    className="p-4 bg-green-100 border-2 border-green-600 hover:bg-green-200 transition-all"
                   >
-                    {copiedId === lastCampaignId ? (
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    )}
+                    {copiedId === lastCampaignId ? "COPIED" : "COPY"}
                   </button>
                 </div>
               )}
@@ -223,93 +218,67 @@ export default function CreateCampaign() {
           )}
 
           {status === "error" && (
-            <div className="bg-red-50 border-2 border-red-100 rounded-2xl p-6 text-center mt-6">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <p className="text-base font-bold text-red-800">Launch Failed</p>
-              <p className="text-sm text-red-600 mt-1">{errorMessage}</p>
+            <div className="border-4 border-red-600 bg-red-50 p-10 mt-16 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]">
+              <p className="text-2xl font-black text-red-900 mb-4 uppercase">Launch Aborted</p>
+              <p className="text-lg font-bold text-red-700">{errorMessage}</p>
             </div>
           )}
         </div>
 
         {/* Right: History */}
-        <div className="section-card" style={{ padding: 0, overflow: 'hidden', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)' }}>Recent Campaigns</span>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary)', background: 'var(--primary-light)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>{history.length} Total</span>
+        <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 flex flex-col h-full min-h-[800px] overflow-hidden">
+          <div className="p-12 border-b border-gray-100 flex items-center justify-between bg-gray-50/30">
+            <div className="flex items-center gap-6">
+              <span className="text-[26px] font-black uppercase tracking-[0.15em] text-gray-900">Command History</span>
+              <span className="bg-indigo-600 text-white px-5 py-1.5 text-lg font-black rounded-lg">{history.length}</span>
             </div>
             {history.length > 0 && (
               <button
                 onClick={clearHistory}
-                className="text-sm font-bold text-gray-400 hover:text-red-500 transition-colors"
+                className="text-sm font-black uppercase hover:text-red-600 underline underline-offset-4"
               >
-                Clear All
+                Wipe Logs
               </button>
             )}
           </div>
-          
-          <div style={{ flex: 1, padding: '24px' }}>
+
+          <div className="flex-1 p-8 overflow-y-auto">
             {history.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center py-20">
-                <div className="w-16 h-16 rounded-2xl bg-[var(--surface)] border border-[var(--border-light)] flex items-center justify-center mb-4 text-[var(--text-dim)]">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <div className="h-full flex flex-col items-center justify-center opacity-20">
+                <div className="w-32 h-32 border-8 border-black flex items-center justify-center mb-8">
+                  <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h4 className="text-base font-bold text-[var(--text)] mb-1">No active campaigns</h4>
-                <p className="text-sm text-[var(--text-muted)] max-w-[240px]">Configure the form on the left to start.</p>
+                <p className="text-2xl font-black uppercase">No Data Logs Found</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {history.map((c, i) => (
-                  <div key={i} className="group bg-white border-2 border-gray-50 rounded-2xl p-5 hover:border-indigo-100 hover:shadow-lg hover:shadow-gray-50 transition-all duration-300">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div>
-                        <p className="text-base font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{c.campaignName}</p>
-                        <p className="text-xs text-gray-400 mt-1 font-medium">{formatDate(c.createdAt)}</p>
+              <div className="grid grid-cols-1 gap-8">
+                {history.map((c) => (
+                  <div
+                    key={c.campaignId || c.createdAt}
+                    className="border border-gray-100 rounded-2xl p-6 hover:bg-gray-50/50 transition-all group"
+                  >
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{formatDate(c.createdAt)}</p>
+                        <h4 className="text-2xl font-black text-black truncate uppercase">{c.campaignName}</h4>
                       </div>
-                      <span className="shrink-0 px-2.5 py-1 rounded-lg bg-green-50 text-green-600 text-[10px] font-bold uppercase tracking-wider">
-                        Active
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 mb-5">
-                      <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="text-xs font-bold text-gray-600">
-                          {c.subscribers === "All Subscribers" ? "All" : c.subscribers} Subs
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <span className="text-xs font-bold text-gray-600">{c.dailyLimit} / day</span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1 uppercase">{c.subscribers}</span>
+                        <span className="text-[10px] font-black bg-black text-white px-3 py-1 uppercase">{c.dailyLimit}/day</span>
                       </div>
                     </div>
 
                     {c.campaignId && (
-                      <div className="bg-gray-50/50 rounded-xl px-3 py-2 flex items-center justify-between gap-3 border border-gray-100">
-                        <p className="text-[10px] font-mono font-bold text-gray-400 truncate">{c.campaignId}</p>
+                      <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <span className="text-[10px] font-black uppercase text-gray-400 shrink-0">ID:</span>
+                        <code className="text-xs font-black truncate flex-1">{c.campaignId}</code>
                         <button
                           onClick={() => handleCopyId(c.campaignId)}
-                          className="shrink-0 p-1.5 text-gray-300 hover:text-indigo-600 transition-colors"
+                          className="shrink-0 text-indigo-600 hover:text-black font-black text-xs uppercase"
                         >
-                          {copiedId === c.campaignId ? (
-                            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          )}
+                          {copiedId === c.campaignId ? "Copied" : "Copy"}
                         </button>
                       </div>
                     )}
