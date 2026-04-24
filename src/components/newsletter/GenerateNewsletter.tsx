@@ -285,25 +285,41 @@ export default function GenerateNewsletter() {
         </div>
 
         {/* Right: Output */}
-        <div className="section-card" style={{ padding: 0, overflow: 'hidden', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: isLoading ? 'var(--amber)' : (newsletter ? 'var(--green)' : 'var(--border-mid)') }} />
-              <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)' }}>AI Masterpiece</span>
+        <div className="section-card" style={{ padding: 0, overflow: 'hidden', minHeight: '600px', display: 'flex', flexDirection: 'column', background: 'var(--surface-light)' }}>
+          <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-light)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: isLoading ? 'var(--amber)' : (newsletter ? '#10b981' : 'var(--border-mid)'), boxShadow: newsletter ? '0 0 10px rgba(16, 185, 129, 0.4)' : 'none' }} />
+              <span style={{ fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text)' }}>AI Masterpiece</span>
             </div>
             {hasContent && (
-              <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
                 <button 
                   onClick={handleCopy}
-                  style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: '#fff', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  style={{ 
+                    padding: '8px 16px', 
+                    borderRadius: '100px', 
+                    border: '1px solid var(--border)', 
+                    background: '#fff', 
+                    fontSize: '12px', 
+                    fontWeight: 700, 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
                 >
-                  {copied ? "✓ Copied" : "📋 Copy Raw"}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  {copied ? "Copied!" : "Copy Raw"}
                 </button>
               </div>
             )}
           </div>
 
-          <div style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, padding: '40px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             {!isLoading && !hasContent && !errorMessage && (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
                 <div className="w-20 h-20 rounded-3xl bg-[var(--primary-light)] flex items-center justify-center mb-6 text-[var(--primary)]">
