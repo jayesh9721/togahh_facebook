@@ -1,56 +1,156 @@
-# Tattoo Studio AI Automation Dashboard
+# 🚀 Togahh Facebook & Marketing Automation Dashboard
 
-## 🚨 CRITICAL DATA SAFETY RULES (For AI Context) 🚨
-1. Every \`.map()\` call must use optional chaining: \`(data?.field || []).map()\`
-2. Every object access must use optional chaining: \`data?.field?.subfield\`
-3. \`analysisData\` received from n8n webhook has this exact structure:
-   - \`analysisData.executive_summary\` (string)
-   - \`analysisData.competitor_analysis\` (array) 
-   - \`analysisData.gap_opportunities\` (array)
-   - \`analysisData.ready_ad_scripts\` (array)
-   - \`analysisData.action_plan\` (array)
-   - \`analysisData.hook_analysis.top_hook_patterns\` (array)
-   - \`analysisData.market_insights\` (object)
-   - \`analysisData.budget_recommendation\` (object)
-4. Never assume any field exists — always use \`|| []\` fallback for arrays
-5. Never use \`analysisData.ideas\` — it does not exist, use \`gap_opportunities\` instead
-6. Never use \`analysisData.competitors\` — it does not exist, use \`competitor_analysis\` instead
+![Dashboard Preview](file:///C:/Users/ASUS/.gemini/antigravity/brain/a439425b-c070-4314-9df3-b3ef2845bcc5/dashboard_preview_1777131280887.png)
+
+A premium, all-in-one marketing automation suite built with **Next.js 15+**, designed for high-velocity ad creation, campaign management, and market analysis. This platform bridges the gap between AI-driven creative generation and live Meta Ads execution.
+
+> [!TIP]
+> This repository houses three distinct sub-applications designed to work in synergy to dominate the digital marketing landscape.
+
+
+## 🏗️ System Architecture
+
+The project is structured as a multi-layered ecosystem, combining legacy powerhouse components with modern, modular sub-apps.
+
+### 1. Main Automation Hub (`/`)
+A high-performance, single-page client interface that centralizes 10 core marketing functions. It uses a custom inline-styling system for maximum portability and real-time responsiveness.
+
+### 2. Workflow Management Dashboard (`/dashboard`)
+A modular Next.js App Router implementation focused on structured workflow execution, analytics, and service management.
+*   **Tech**: Server Components, Prisma ORM, Tailwind CSS, Radix UI.
+
+### 3. AI Newsletter Engine (`/newsletter`)
+A dedicated subsystem for automated content generation and history management.
+*   **Tech**: Four-layer React Context state management, LocalStorage persistence.
 
 ---
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [\`create-next-app\`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## 🌟 Key Features
 
-## Getting Started
+### 📊 Ads Analysis & Market Intelligence
+*   **AI Competitor Analysis**: Deep-dive into competitor strategies and gap identification.
+*   **Market Insights**: Automated extraction of hook patterns and executive summaries.
+*   **Budget Recommendations**: Data-driven suggestions for campaign scaling.
 
-First, run the development server:
+### 🎬 Creative Generation (Video & Image)
+*   **Automated Video Ads**: Generate high-converting video scripts and assets with customizable durations (20s-40s).
+*   **Multi-Style Rendering**: Choose from Cinematic, Neon, Minimal, or Dark & Moody aesthetics.
+*   **Voiceover Integration**: Integrated with ElevenLabs (Markmont, John, Adhalina, Clara) for premium audio.
+
+### 🚀 Meta Ads Execution
+*   **Live Campaign Management**: Real-time monitoring of active Meta campaigns via Graph API.
+*   **Instant Updates**: Modify budgets, targeting (age, gender, geo), and status directly from the dashboard.
+*   **Automated Approval Queue**: Manage the lifecycle of ads from generation to live deployment.
+
+### 📧 Marketing Outreach
+*   **Newsletter Automation**: End-to-end generation, service management, and campaign history.
+*   **Outreach Manager**: Unified interface for social and email outreach workflows.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Framework** | Next.js 15+ (React 19), TypeScript |
+| **State Management** | Zustand, React Context, TanStack Query |
+| **Database & ORM** | Prisma, PostgreSQL (Supabase) |
+| **Styling** | Tailwind CSS + Radix UI (New), Custom CSS Variables (Legacy) |
+| **Backend Automation** | n8n (Multiple Cloud Instances) |
+| **Authentication** | NextAuth (JWT Strategy), Supabase Auth |
+| **Visualizations** | Recharts, Lucide Icons |
+
+---
+
+## 📁 Project Structure
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+src/
+├── app/
+│   ├── api/             # Next.js API Routes (Meta, n8n proxy, Auth)
+│   ├── dashboard/       # Workflow Management & Analytics
+│   ├── newsletter/      # Newsletter Sub-application
+│   ├── components.js    # Main Dash UI Primitives
+│   └── page.js          # Main Automation Hub (3800+ lines of logic)
+├── components/
+│   ├── ui/              # Radix UI + Tailwind Shared Components
+│   ├── dashboard/       # Dashboard-specific modules
+│   └── newsletter/      # Newsletter engine components
+├── lib/
+│   ├── prisma.ts        # Database client
+│   ├── supabase.js      # Supabase integration (Main)
+│   └── socialSupabase.js # Supabase integration (SocialDash)
+└── prisma/              # Database Schema & Migrations
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🚦 Getting Started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Prerequisites
+*   Node.js 18+
+*   Docker (Optional, for local PostgreSQL)
+*   Supabase Account (x2 Projects)
+*   n8n Instances (x2 Instances)
 
-## Learn More
+### 2. Installation
+```bash
+# Install dependencies
+npm install
 
-To learn more about Next.js, take a look at the following resources:
+# Generate Prisma Client
+npx prisma generate
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Start Development Server
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. Environment Variables
+Create a `.env` file in the root directory:
 
-## Deploy on Vercel
+```ini
+# Database
+DATABASE_URL="postgres://..."
+DIRECT_URL="postgres://..."
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Supabase (Project A - Main)
+NEXT_PUBLIC_SUPABASE_URL="..."
+NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Supabase (Project B - SocialDash)
+NEXT_PUBLIC_SOCIAL_DASH_SUPABASE_URL="..."
+NEXT_PUBLIC_SOCIAL_DASH_SUPABASE_ANON_KEY="..."
+
+# Meta API
+META_ACCESS_TOKEN="..."
+META_AD_ACCOUNT_ID="..."
+
+# n8n Webhooks
+N8N_WEBHOOK_URL="..."
+```
+
+---
+
+## 🛡️ Data Safety & Coding Standards
+
+> [!IMPORTANT]
+> **Optional Chaining is MANDATORY**: Always use `?.` for object access and `(data?.field || []).map()` for array iterations.
+
+### Styling Boundary Rules
+*   **Main Dash (`/`)**: Use **inline styles only** with CSS variables from `globals.css`. Do NOT use Tailwind classes here.
+*   **Sub-Apps**: Use **Tailwind CSS** only. Do NOT use inline styles here.
+
+### n8n Data Schema
+Expected fields from AI analysis webhooks (do not rename):
+*   `executive_summary`
+*   `competitor_analysis`
+*   `gap_opportunities`
+*   `ready_ad_scripts`
+*   `hook_analysis`
+*   `market_insights`
+
+---
+
+## 🔗 Internal Documentation
+*   [CLAUDE.md](file:///c:/Users/ASUS/OneDrive/Desktop/version/CLAUDE.md) - Detailed developer architecture & commands.
+*   [Database Schema](file:///c:/Users/ASUS/OneDrive/Desktop/version/prisma/schema.prisma) - Prisma data models.

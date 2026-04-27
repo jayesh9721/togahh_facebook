@@ -5,19 +5,20 @@ import { useServices } from "@/context/ServicesContext";
 import { useNewsletter, NewsletterData } from "@/context/NewsletterContext";
 import { useNewsletterHistory } from "@/context/NewsletterHistoryContext";
 import EmailPreview from "./EmailPreview";
+import "./newsletter.css";
 
 const SECTIONS: { key: keyof NewsletterData; label: string }[] = [
-  { key: "subjectLine",    label: "Subject Line"    },
-  { key: "preheader",      label: "Preheader"       },
-  { key: "headerTitle",    label: "Header Title"    },
-  { key: "intro",          label: "Introduction"    },
-  { key: "mainStory",      label: "Main Story"      },
-  { key: "keyInsights",    label: "Key Insights"    },
+  { key: "subjectLine", label: "Subject Line" },
+  { key: "preheader", label: "Preheader" },
+  { key: "headerTitle", label: "Header Title" },
+  { key: "intro", label: "Introduction" },
+  { key: "mainStory", label: "Main Story" },
+  { key: "keyInsights", label: "Key Insights" },
   { key: "industryUpdate", label: "Industry Update" },
-  { key: "proTip",         label: "Pro Tip"         },
-  { key: "callToAction",   label: "Call to Action"  },
-  { key: "closing",        label: "Closing"         },
-  { key: "footerNote",     label: "Footer Note"     },
+  { key: "proTip", label: "Pro Tip" },
+  { key: "callToAction", label: "Call to Action" },
+  { key: "closing", label: "Closing" },
+  { key: "footerNote", label: "Footer Note" },
 ];
 
 function formatText(text: string) {
@@ -189,8 +190,8 @@ export default function GenerateNewsletter() {
   const handleCopy = async () => {
     const text = newsletter
       ? SECTIONS.filter(({ key }) => newsletter[key])
-          .map(({ label, key }) => `[${label.toUpperCase()}]\n${formatText(newsletter[key]!)}`)
-          .join("\n\n---\n\n")
+        .map(({ label, key }) => `[${label.toUpperCase()}]\n${formatText(newsletter[key]!)}`)
+        .join("\n\n---\n\n")
       : rawFallback;
     await navigator.clipboard.writeText(text);
     setCopied(true);
@@ -201,50 +202,31 @@ export default function GenerateNewsletter() {
   const hasContent = (status === "success" || status === "rejected") && (newsletter || rawFallback);
 
   return (
-    <div className="max-w-7xl mx-auto px-8 pb-20 animate-fade-in">
-      <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-8 items-start">
-        {/* Left: inputs */}
-        <div className="sticky top-24 space-y-6">
-          <div 
-            className="section-card" 
-            style={{ 
-              padding: '28px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '32px'
-            }}
-          >
+    <div className="nl-root">
+      <div className="nl-grid nl-grid-2">
+
+        {/* ---- Left: inputs ---- */}
+        <div className="sticky top-24">
+          <div className="section-card nl-panel-body flex flex-col gap-6">
+
+            {/* Step 1 */}
             <div>
-              <label className="block text-[14px] font-black text-gray-900 mb-6 uppercase tracking-[0.2em] pl-1">
-                Step 1: Select Specialty
-              </label>
-              <div className="grid grid-cols-1 gap-4">
+              <label className="nl-label">Step 1: Select Specialty</label>
+              <div className="flex flex-col gap-2 mt-2">
                 {services.map((service) => (
                   <button
                     key={service}
                     type="button"
                     onClick={() => setSelectedService(service)}
-                    style={{
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      borderWidth: '2px'
-                    }}
-                    className={`w-full text-left px-8 py-6 rounded-2xl text-[18px] font-bold flex items-center justify-between group transition-all duration-300 ${
-                      selectedService === service
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-900 shadow-xl shadow-indigo-100"
-                        : "border-transparent bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-900"
-                    }`}
+                    className={`nl-service-btn ${selectedService === service ? "selected" : ""}`}
                   >
-                    <span className="flex items-center gap-6">
-                      <span 
-                        className={`w-4 h-4 rounded-full transition-all duration-500 ${
-                          selectedService === service ? "bg-indigo-600 scale-150 shadow-[0_0_20px_rgba(79,70,229,0.7)]" : "bg-gray-300"
-                        }`} 
-                      />
+                    <span className="flex items-center gap-3">
+                      <span className={`nl-radio-dot ${selectedService === service ? "active" : "inactive"}`} />
                       {service}
                     </span>
                     {selectedService === service && (
-                      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="nl-check-icon">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       </div>
@@ -254,118 +236,118 @@ export default function GenerateNewsletter() {
               </div>
             </div>
 
+            {/* Step 2 */}
             <div>
-              <label className="block text-[14px] font-black text-gray-900 mb-6 uppercase tracking-[0.2em] pl-1">
-                Step 2: Define Topic
-              </label>
+              <label className="nl-label">Step 2: Define Topic</label>
               <textarea
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="e.g. Advantages of advanced Hair Transplant..."
-                className="w-full h-40 px-8 py-6 border-2 border-gray-100 rounded-2xl text-[16px] text-gray-900 bg-gray-50/50 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all resize-none shadow-sm"
+                className="nl-textarea mt-2"
               />
             </div>
 
+            {/* Generate button */}
             <button
               onClick={handleGenerate}
               disabled={isLoading || !selectedService || !topic.trim()}
-              className={`w-full py-8 rounded-3xl text-[20px] font-black flex items-center justify-center gap-4 transition-all duration-300 ${
-                isLoading || !selectedService || !topic.trim()
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95"
-              }`}
+              className="nl-btn-primary"
             >
               {isLoading ? (
-                <><div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" /> CRAFTING...</>
+                <><div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" /> CRAFTING...</>
               ) : (
-                <><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> GENERATE NOW</>
+                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> GENERATE NOW</>
               )}
             </button>
           </div>
         </div>
 
-        {/* Right: Output */}
-        <div className="section-card" style={{ padding: 0, overflow: 'hidden', minHeight: '600px', display: 'flex', flexDirection: 'column', background: 'var(--surface-light)' }}>
-          <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-light)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: isLoading ? 'var(--amber)' : (newsletter ? '#10b981' : 'var(--border-mid)'), boxShadow: newsletter ? '0 0 10px rgba(16, 185, 129, 0.4)' : 'none' }} />
-              <span style={{ fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text)' }}>AI Masterpiece</span>
+        {/* ---- Right: Output ---- */}
+        <div className="nl-output-panel">
+
+          {/* Output header */}
+          <div className="nl-output-header">
+            <div className="flex items-center gap-3">
+              <div
+                className="nl-status-dot"
+                style={{
+                  background: isLoading ? '#f59e0b' : (newsletter ? '#10b981' : '#d1d5db'),
+                  boxShadow: newsletter ? '0 0 8px rgba(16,185,129,0.4)' : 'none'
+                }}
+              />
+              <span style={{ fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#374151' }}>
+                AI Masterpiece
+              </span>
             </div>
             {hasContent && (
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button 
-                  onClick={handleCopy}
-                  style={{ 
-                    padding: '8px 16px', 
-                    borderRadius: '100px', 
-                    border: '1px solid var(--border)', 
-                    background: '#fff', 
-                    fontSize: '12px', 
-                    fontWeight: 700, 
-                    cursor: 'pointer', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    transition: 'all 0.2s',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                  {copied ? "Copied!" : "Copy Raw"}
-                </button>
-              </div>
+              <button
+                onClick={handleCopy}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '100px',
+                  border: '1px solid #f1f5f9',
+                  background: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                {copied ? "Copied!" : "Copy Raw"}
+              </button>
             )}
           </div>
 
-          <div style={{ flex: 1, padding: '40px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* Output body */}
+          <div className="nl-output-body">
             {!isLoading && !hasContent && !errorMessage && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-                <div className="w-20 h-20 rounded-3xl bg-[var(--primary-light)] flex items-center justify-center mb-6 text-[var(--primary)]">
-                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 text-indigo-400">
+                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 4v4h4" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold text-[var(--text)] mb-3">Awaiting Input...</h3>
-                <p className="text-[var(--text-muted)] text-sm max-w-sm">
-                  Select your specialty and define the focus to begin generation.
-                </p>
+                <h3 className="text-base font-bold text-gray-700 mb-2">Awaiting Input...</h3>
+                <p className="text-gray-400 text-sm max-w-xs">Select your specialty and define the focus to begin generation.</p>
               </div>
             )}
 
             {isLoading && (
-              <div className="h-full flex flex-col items-center justify-center py-24 px-12 text-center">
-                <div className="relative mb-16 scale-[2]">
-                  <div className="w-16 h-16 border-[6px] border-indigo-50 border-t-indigo-600 rounded-full animate-spin"></div>
+              <div className="h-full flex flex-col items-center justify-center py-16 text-center">
+                <div className="relative mb-10">
+                  <div className="w-12 h-12 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-4 h-4 bg-indigo-600 rounded-full animate-ping opacity-75"></div>
+                    <div className="w-3 h-3 bg-indigo-600 rounded-full animate-ping opacity-75" />
                   </div>
                 </div>
-                <p className="text-2xl font-black text-gray-900 tracking-[0.1em] animate-pulse">
+                <p className="text-base font-black text-gray-800 tracking-widest animate-pulse">
                   {status === "regenerating" ? "OPTIMIZING..." : status === "proceeding" ? "FINALIZING..." : "SYNTHESIZING..."}
                 </p>
-                <div className="mt-8 flex gap-2">
+                <div className="mt-4 flex gap-1.5">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className={`w-2 h-2 rounded-full bg-indigo-600 animate-bounce`} style={{ animationDelay: `${i * 0.1}s` }} />
+                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: `${i * 0.1}s` }} />
                   ))}
                 </div>
               </div>
             )}
 
             {status === "error" && (
-              <div className="h-full flex flex-col items-center justify-center py-24 px-10 text-center">
-                <div className="w-20 h-20 rounded-[32px] bg-red-50 flex items-center justify-center mb-8 rotate-12 shadow-xl shadow-red-100">
-                  <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="h-full flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-5 shadow-md">
+                  <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <p className="text-2xl font-black text-gray-900 tracking-tight">Generation Interrupted</p>
-                <p className="text-gray-400 mt-4 text-sm font-bold uppercase tracking-widest max-w-sm">{errorMessage}</p>
-                <button 
-                  onClick={handleGenerate} 
-                  className="mt-10 px-10 py-5 bg-gray-900 text-white rounded-[24px] font-black tracking-widest hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200"
+                <p className="text-base font-black text-gray-900">Generation Interrupted</p>
+                <p className="text-gray-400 mt-2 text-xs font-bold uppercase tracking-widest max-w-xs">{errorMessage}</p>
+                <button
+                  onClick={handleGenerate}
+                  className="mt-6 px-8 py-3 bg-gray-900 text-white rounded-xl text-sm font-black tracking-wider hover:bg-black transition-all active:scale-95"
                 >
                   RETRY GENERATION
                 </button>
@@ -373,123 +355,102 @@ export default function GenerateNewsletter() {
             )}
 
             {hasContent && (
-              <div className="animate-in fade-in zoom-in-95 duration-700">
+              <div className="animate-in fade-in zoom-in-95 duration-500">
                 {newsletter && <EmailPreview data={newsletter} />}
                 {rawFallback && (
-                  <div className="bg-gray-50/80 rounded-[40px] p-12 border-2 border-gray-100">
-                    <pre className="whitespace-pre-wrap text-base text-gray-800 leading-relaxed font-black font-sans">{rawFallback}</pre>
+                  <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed font-sans">{rawFallback}</pre>
                   </div>
                 )}
               </div>
             )}
           </div>
 
+          {/* Proceeded success */}
           {status === "proceeded" && (
-            <div className="mt-12 space-y-6 animate-in slide-in-from-bottom-10 duration-700 p-8">
-              <div 
-                className="bg-green-50/80 border-2 border-green-100 rounded-[48px] p-10 flex items-start gap-8"
-                style={{ boxShadow: '0 30px 60px -15px rgba(34, 197, 94, 0.25)' }}
-              >
-                <div className="w-16 h-16 rounded-[28px] bg-green-500 flex items-center justify-center shrink-0 shadow-xl shadow-green-200">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="nl-output-actions space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-green-50 border border-green-100 rounded-2xl p-5 flex items-start gap-5">
+                <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center shrink-0 shadow-md shadow-green-200">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-3xl font-black text-green-900 tracking-tight">Transmission Complete</p>
-                  <p className="text-xs font-black text-green-700/60 mt-2 uppercase tracking-[0.2em]">Validated by n8n Core Engine</p>
+                  <p className="text-base font-black text-green-900">Transmission Complete</p>
+                  <p className="text-xs font-bold text-green-700/60 mt-1 uppercase tracking-widest">Validated by n8n Core Engine</p>
                   {templateId && (
-                    <div className="mt-8 bg-white/80 border-2 border-green-200 rounded-[28px] px-6 py-5 flex items-center justify-between gap-4">
+                    <div className="mt-4 bg-white border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em] mb-2">Internal UUID</p>
-                        <p className="text-sm font-mono font-black text-gray-900 truncate">{templateId}</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Internal UUID</p>
+                        <p className="text-xs font-mono font-bold text-gray-900 truncate">{templateId}</p>
                       </div>
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(templateId); }}
-                        className="shrink-0 p-3 text-gray-400 hover:text-indigo-600 bg-gray-50 rounded-2xl transition-all"
-                      >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
+                      <button onClick={() => navigator.clipboard.writeText(templateId)} className="shrink-0 p-2 text-gray-400 hover:text-indigo-600 bg-gray-50 rounded-lg transition-all">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                       </button>
                     </div>
                   )}
                 </div>
               </div>
-              <button 
-                onClick={reset} 
-                className="w-full py-6 text-lg font-black text-indigo-600 bg-white border-2 border-indigo-100 rounded-[32px] hover:bg-indigo-50 transition-all shadow-lg shadow-indigo-100/20"
-              >
+              <button onClick={reset} className="w-full py-4 text-sm font-black text-indigo-600 bg-white border border-indigo-100 rounded-xl hover:bg-indigo-50 transition-all">
                 START NEW SESSION
               </button>
             </div>
           )}
 
+          {/* Authorize / Revise */}
           {status === "success" && (
-            <div className="mt-12 flex gap-6 animate-in slide-in-from-bottom-10 duration-700 p-8">
-              <button
-                onClick={handleProceed}
-                style={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  boxShadow: '0 20px 40px -10px rgba(16, 185, 129, 0.4)'
-                }}
-                className="flex-1 py-7 text-white text-xl font-bold rounded-[32px] hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-4"
-              >
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                AUTHORIZE & SEND
-              </button>
-              <button
-                onClick={() => setStatus("rejected")}
-                className="flex-1 py-7 bg-white text-gray-400 border-2 border-gray-100 text-xl font-bold rounded-[32px] hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-[0.97] flex items-center justify-center gap-4"
-              >
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                REVISE CONTENT
-              </button>
+            <div className="nl-output-actions animate-in slide-in-from-bottom-4 duration-500">
+              <div className="nl-action-row">
+                <button onClick={handleProceed} className="nl-btn-send">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  AUTHORIZE & SEND
+                </button>
+                <button onClick={() => setStatus("rejected")} className="nl-btn-revise">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  REVISE CONTENT
+                </button>
+              </div>
             </div>
           )}
 
+          {/* AI Refinement */}
           {status === "rejected" && (
-            <div className="mt-12 space-y-8 animate-in slide-in-from-bottom-10 duration-700 p-8">
-              <div className="flex items-center gap-6 px-4">
-                <div className="w-14 h-14 rounded-[22px] bg-indigo-50 flex items-center justify-center shadow-lg shadow-indigo-100/50">
-                  <svg className="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="nl-output-actions space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shadow-sm">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-gray-900 tracking-tight">AI REFINEMENT</p>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">Specify changes for next iteration</p>
+                  <p className="text-sm font-black text-gray-900 uppercase tracking-wider">AI REFINEMENT</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Specify changes for next iteration</p>
                 </div>
               </div>
               <textarea
                 value={retryPrompt}
                 onChange={(e) => setRetryPrompt(e.target.value)}
-                rows={4}
+                rows={3}
                 placeholder="e.g. Enhance the medical tone, focus on hair density..."
-                className="w-full px-8 py-7 bg-gray-50/80 border-2 border-gray-100 rounded-[40px] text-lg font-black text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-8 focus:ring-indigo-100/30 focus:border-indigo-500 transition-all resize-none"
+                className="nl-textarea"
               />
-              <div className="flex gap-6">
+              <div className="nl-action-row">
                 <button
                   onClick={handleRegenerate}
                   disabled={!retryPrompt.trim()}
-                  style={{
-                    background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
-                    boxShadow: '0 20px 40px -10px rgba(79, 70, 229, 0.4)'
-                  }}
-                  className="flex-1 py-6 text-white text-lg font-black rounded-[32px] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-20 disabled:scale-100 transition-all flex items-center justify-center gap-4"
+                  className="nl-btn-primary"
+                  style={{ background: retryPrompt.trim() ? 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)' : undefined }}
                 >
                   RE-GENERATE
                 </button>
-                <button
-                  onClick={() => setStatus("success")}
-                  className="px-10 py-6 text-lg font-black text-gray-400 bg-white border-2 border-gray-100 rounded-[32px] hover:bg-gray-50 hover:text-gray-900 transition-all"
-                >
+                <button onClick={() => setStatus("success")} className="nl-btn-ghost">
                   DISCARD
                 </button>
               </div>
             </div>
           )}
         </div>
+
       </div>
     </div>
   );

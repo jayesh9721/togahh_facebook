@@ -143,7 +143,7 @@ export default function SocialDash() {
       {/* Toast Notification */}
       {toast && (
         <div className="fixed top-6 right-6 z-[100] animate-toast">
-          <div 
+          <div
             className="px-6 py-4 rounded-xl flex items-center gap-3 bg-white shadow-xl border border-slate-100 border-l-4"
             style={{ borderLeftColor: medicalBlue }}
           >
@@ -166,15 +166,15 @@ export default function SocialDash() {
           <p className="text-slate-500 mt-2 text-base sm:text-lg">Manage your social media content generation pipeline</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Badge 
-            text="v2.0 Connected" 
-            color={medicalBlue} 
-            bg="var(--primary-light)" 
+          <Badge
+            text="v2.0 Connected"
+            color={medicalBlue}
+            bg="var(--primary-light)"
           />
-          <Badge 
-            text={status} 
-            color="var(--green)" 
-            bg="var(--green-light)" 
+          <Badge
+            text={status}
+            color="var(--green)"
+            bg="var(--green-light)"
           />
         </div>
       </header>
@@ -186,7 +186,7 @@ export default function SocialDash() {
           {/* Image Generation Card */}
           <Card className="hover:border-sky-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
             <div className="flex items-center gap-4 mb-8">
-              <div 
+              <div
                 className="p-4 rounded-2xl bg-sky-50"
                 style={{ color: medicalBlue }}
               >
@@ -194,7 +194,7 @@ export default function SocialDash() {
               </div>
               <h2 className="text-2xl font-bold text-slate-800">Social Image Creator</h2>
             </div>
-            
+
             <div className="p-7 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-white hover:shadow-sm transition-all">
               <p className="text-slate-500 mb-8 text-sm leading-relaxed">
                 Create professional social media visuals. Assets are automatically scaled for Instagram, Facebook, and LinkedIn.
@@ -221,7 +221,7 @@ export default function SocialDash() {
           {/* Automated Video Card */}
           <Card className="hover:border-teal-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
             <div className="flex items-center gap-4 mb-8">
-              <div 
+              <div
                 className="p-4 rounded-2xl bg-teal-50"
                 style={{ color: medicalTeal }}
               >
@@ -255,7 +255,7 @@ export default function SocialDash() {
           {/* Manual Input Card */}
           <Card className="hover:border-amber-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
             <div className="flex items-center gap-4 mb-8">
-              <div 
+              <div
                 className="p-4 rounded-2xl bg-amber-50"
                 style={{ color: "var(--amber)" }}
               >
@@ -322,11 +322,11 @@ export default function SocialDash() {
                   <PrimaryButton
                     onClick={handlePostVideo}
                     disabled={loading === 'post'}
-                    style={{ 
-                      padding: "16px 36px", 
-                      fontSize: 15, 
+                    style={{
+                      padding: "16px 36px",
+                      fontSize: 15,
                       borderRadius: "12px",
-                      background: `linear-gradient(135deg, ${medicalBlue}, ${medicalTeal})` 
+                      background: `linear-gradient(135deg, ${medicalBlue}, ${medicalTeal})`
                     }}
                   >
                     {loading === 'post' ? (

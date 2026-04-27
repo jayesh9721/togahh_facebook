@@ -1,21 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { 
-  Badge, 
-  Card, 
-  MetricCard, 
-  SectionTitle, 
-  WorkflowStep, 
-  EmptyState, 
-  Spinner, 
-  SecondaryButton 
+import {
+  Badge,
+  Card,
+  MetricCard,
+  SectionTitle,
+  WorkflowStep,
+  EmptyState,
+  Spinner,
+  SecondaryButton
 } from "./components";
-import { 
-  User, 
-  LogOut, 
-  LogIn, 
-  ShieldCheck, 
+import {
+  User,
+  LogOut,
+  LogIn,
+  ShieldCheck,
   Settings,
   Bell
 } from "lucide-react";
@@ -29,8 +29,8 @@ import CreateCampaign from "@/components/newsletter/CreateCampaign";
 import NewsletterHistory from "@/components/newsletter/NewsletterHistory";
 import ManageServices from "@/components/newsletter/ManageServices";
 import { NewsletterProviders } from "@/components/newsletter/Providers";
+import OutreachManager from "@/components/outreach/OutreachManager";
 import "./globals.css";
-import "./dashboard.css";
 
 // ─── NEWSLETTER REDIRECT ─────────────────────────────────────
 function NewsletterRedirect() {
@@ -57,6 +57,7 @@ const TABS = [
 
   { id: "reports", label: "Reports", icon: "◧" },
   { id: "social-dash", label: "Social-Dash", icon: "🎨" },
+  { id: "outreach", label: "Outreach", icon: "🌐" },
   { id: "newsletter", label: "Newsletter", icon: "📧" },
 ];
 
@@ -276,7 +277,7 @@ export default function Dashboard() {
       } else {
         setEditError(data.error || "Failed to fetch details");
       }
-    } catch(e) {
+    } catch (e) {
       setEditError("Network error");
     } finally {
       setEditLoading(false);
@@ -299,7 +300,7 @@ export default function Dashboard() {
       } else {
         setEditError(data.error || "Failed to fetch details");
       }
-    } catch(e) {
+    } catch (e) {
       setEditError("Network error");
     } finally {
       setEditLoading(false);
@@ -310,11 +311,11 @@ export default function Dashboard() {
     if (!editData) return;
     let t = editData.targeting;
     if (typeof t === 'string') {
-      try { t = JSON.parse(t); } catch(e) { t = {}; }
+      try { t = JSON.parse(t); } catch (e) { t = {}; }
     } else {
       t = { ...t };
     }
-    
+
     if (key === 'age_min') t.age_min = parseInt(value, 10) || 18;
     if (key === 'age_max') t.age_max = parseInt(value, 10) || 65;
     if (key === 'gender') {
@@ -328,8 +329,8 @@ export default function Dashboard() {
       if (!t.geo_locations) t.geo_locations = {};
       t.geo_locations.countries = value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     }
-    
-    setEditData({...editData, targeting: t});
+
+    setEditData({ ...editData, targeting: t });
   };
 
   const saveEdit = async () => {
@@ -348,7 +349,7 @@ export default function Dashboard() {
         if (typeof parsedTargeting === 'string') {
           try {
             parsedTargeting = JSON.parse(parsedTargeting);
-          } catch(e) {
+          } catch (e) {
             setEditError("Invalid JSON in targeting");
             setEditSaving(false);
             return;
@@ -363,7 +364,7 @@ export default function Dashboard() {
           payload.adSetData.end_time = editData.end_time;
         }
       }
-      
+
       const res = await fetch("/api/meta/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -377,7 +378,7 @@ export default function Dashboard() {
       } else {
         setEditError(data.error || "Update failed");
       }
-    } catch(e) {
+    } catch (e) {
       setEditError("Network error");
     } finally {
       setEditSaving(false);
@@ -1307,9 +1308,9 @@ export default function Dashboard() {
         let topPerformer = null;
         if (metaCampaignInsights.length > 0) {
           topPerformer = [...metaCampaignInsights].sort((a, b) => {
-             const ctrA = parseFloat(a.insights?.inline_link_click_ctr || 0);
-             const ctrB = parseFloat(b.insights?.inline_link_click_ctr || 0);
-             return ctrB - ctrA;
+            const ctrA = parseFloat(a.insights?.inline_link_click_ctr || 0);
+            const ctrB = parseFloat(b.insights?.inline_link_click_ctr || 0);
+            return ctrB - ctrA;
           })[0];
         }
 
@@ -1360,14 +1361,14 @@ export default function Dashboard() {
             >
               {/* Left Column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                
+
                 {/* Account Health Window */}
                 <Card style={{ background: "linear-gradient(135deg, #f8fafc, #eff6ff)", border: "1px solid #bfdbfe", padding: "20px 24px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                     <SectionTitle style={{ margin: 0, color: "var(--primary)" }}>Account Health Snapshot</SectionTitle>
                     <Badge text="Live Data" color="var(--primary)" bg="var(--primary-light)" />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div style={{ background: "#ffffff", padding: 16, borderRadius: "var(--radius-md)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", border: "1px solid var(--border-light)" }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Inv.</div>
@@ -1388,12 +1389,12 @@ export default function Dashboard() {
                 <Card style={{ position: "relative", overflow: "hidden", border: "1px solid #bbf7d0", background: "#f0fdf4" }}>
                   <div style={{ position: "absolute", top: -20, right: -20, fontSize: 80, opacity: 0.1 }}>🏆</div>
                   <SectionTitle style={{ color: "var(--green-strong)" }}>Top Performing Campaign</SectionTitle>
-                  
+
                   {topPerformer ? (
                     <div style={{ marginTop: 12 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4, textTransform: "lowercase", display: "inline-block", background: "rgba(0,0,0,0.05)", padding: "2px 8px", borderRadius: 4 }}>{topPerformer.objective?.replace(/_/g, " ")}</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>{topPerformer.name}</div>
-                      
+
                       <div className="flex flex-col sm:flex-row gap-4 lg:gap-5">
                         <div>
                           <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Spend</div>
@@ -2610,13 +2611,13 @@ export default function Dashboard() {
                           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                             {label}
                           </div>
-                          <div style={{ 
-                            background: "#000", 
-                            borderRadius: "var(--radius-md)", 
-                            aspectRatio: "9/16", 
-                            display: "flex", 
-                            alignItems: "center", 
-                            justifyContent: "center", 
+                          <div style={{
+                            background: "#000",
+                            borderRadius: "var(--radius-md)",
+                            aspectRatio: "9/16",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             overflow: "hidden",
                             boxShadow: "inset 0 0 40px rgba(0,0,0,0.5)"
                           }}>
@@ -2692,7 +2693,7 @@ export default function Dashboard() {
                     };
 
                     return (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-4" style={{ 
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-4" style={{
                         maxWidth: "1100px",
                         margin: "0 auto"
                       }}>
@@ -2747,80 +2748,80 @@ export default function Dashboard() {
               {[...allApprovedAds]
                 .sort((a, b) => Number(a.id) - Number(b.id))
                 .map((ad) => {
-                const isVid = (ad.format || "").toLowerCase() === "video";
-                return (
-                  <Card key={`${ad.id}_${ad.time}`} style={{ padding: 12, display: "flex", flexDirection: "column" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Badge
-                          text={isVid ? "Video" : "Image"}
-                          color={isVid ? "var(--primary)" : "var(--amber)"}
-                          bg={isVid ? "var(--primary-light)" : "var(--amber-light)"}
-                        />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
-                          AD {ad.id}
+                  const isVid = (ad.format || "").toLowerCase() === "video";
+                  return (
+                    <Card key={`${ad.id}_${ad.time}`} style={{ padding: 12, display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Badge
+                            text={isVid ? "Video" : "Image"}
+                            color={isVid ? "var(--primary)" : "var(--amber)"}
+                            bg={isVid ? "var(--primary-light)" : "var(--amber-light)"}
+                          />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                            AD {ad.id}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 500 }}>
+                          {new Date(ad.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 500 }}>
-                        {new Date(ad.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                      </span>
-                    </div>
 
-                    <div style={{
-                      background: "#000", 
-                      borderRadius: "var(--radius-md)", 
-                      border: "1px solid var(--border-light)",
-                      aspectRatio: "9/16", 
-                      display: "flex", 
-                      alignItems: "center", 
-                      justifyContent: "center",
-                      overflow: "hidden", 
-                      marginBottom: 16, 
-                      boxShadow: "var(--shadow-sm)"
-                    }}>
-                      {isVid ? (
-                        <video src={ad.text} controls autoPlay={false} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                      ) : (
-                        <img src={ad.text} alt={`Approved Ad ${ad.id}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                      )}
-                    </div>
+                      <div style={{
+                        background: "#000",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px solid var(--border-light)",
+                        aspectRatio: "9/16",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        marginBottom: 16,
+                        boxShadow: "var(--shadow-sm)"
+                      }}>
+                        {isVid ? (
+                          <video src={ad.text} controls autoPlay={false} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                        ) : (
+                          <img src={ad.text} alt={`Approved Ad ${ad.id}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                        )}
+                      </div>
 
-                    <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-                      <button
-                        onClick={() => setSelectedAdForDetails(ad)}
-                        style={{
-                          textDecoration: "none", textAlign: "center", fontSize: 11, fontWeight: 700,
-                          padding: "10px", borderRadius: "var(--radius-md)", border: "1px solid var(--border)",
-                          color: "var(--text)", background: "var(--surface)", transition: "all 0.15s",
-                          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                          cursor: "pointer", fontFamily: "inherit"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-hover)"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface)"}
-                      >
-                        ↗ Full View & Details
-                      </button>
-                      <button
-                        onClick={() => {
-                          setLaunchAdCandidate(ad);
-                          setTab("campaigns");
-                        }}
-                        style={{
-                          border: "none", borderRadius: "var(--radius-md)", padding: "10px",
-                          background: "linear-gradient(135deg, var(--primary), #6366f1)",
-                          color: "#fff", fontSize: 12, fontWeight: 700,
-                          cursor: "pointer", boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)",
-                          transition: "transform 0.1s"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                      >
-                        Launch to Facebook Ads Manager →
-                      </button>
-                    </div>
-                  </Card>
-                );
-              })}
+                      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+                        <button
+                          onClick={() => setSelectedAdForDetails(ad)}
+                          style={{
+                            textDecoration: "none", textAlign: "center", fontSize: 11, fontWeight: 700,
+                            padding: "10px", borderRadius: "var(--radius-md)", border: "1px solid var(--border)",
+                            color: "var(--text)", background: "var(--surface)", transition: "all 0.15s",
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                            cursor: "pointer", fontFamily: "inherit"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-hover)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface)"}
+                        >
+                          ↗ Full View & Details
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLaunchAdCandidate(ad);
+                            setTab("campaigns");
+                          }}
+                          style={{
+                            border: "none", borderRadius: "var(--radius-md)", padding: "10px",
+                            background: "linear-gradient(135deg, var(--primary), #6366f1)",
+                            color: "#fff", fontSize: 12, fontWeight: 700,
+                            cursor: "pointer", boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)",
+                            transition: "transform 0.1s"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                        >
+                          Launch to Facebook Ads Manager →
+                        </button>
+                      </div>
+                    </Card>
+                  );
+                })}
             </div>
           )}
         </div>
@@ -3066,10 +3067,10 @@ export default function Dashboard() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>Name</div>
-                      <input 
-                        type="text" 
-                        value={editData.name || ""} 
-                        onChange={(e) => setEditData({...editData, name: e.target.value})}
+                      <input
+                        type="text"
+                        value={editData.name || ""}
+                        onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                         style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", outline: "none", fontSize: 14 }}
                       />
                     </div>
@@ -3077,22 +3078,22 @@ export default function Dashboard() {
                       <>
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>Daily Budget (in cents)</div>
-                          <input 
-                            type="number" 
-                            value={editData.daily_budget || ""} 
-                            onChange={(e) => setEditData({...editData, daily_budget: e.target.value})}
+                          <input
+                            type="number"
+                            value={editData.daily_budget || ""}
+                            onChange={(e) => setEditData({ ...editData, daily_budget: e.target.value })}
                             style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", outline: "none", fontSize: 14 }}
                           />
                         </div>
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>Target Locations (Country Codes, e.g. US, CA)</div>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={(() => {
                               let t = editData.targeting;
-                              if (typeof t === 'string') try { t = JSON.parse(t); } catch(e) { t = {}; }
+                              if (typeof t === 'string') try { t = JSON.parse(t); } catch (e) { t = {}; }
                               return t?.geo_locations?.countries?.join(', ') || "";
-                            })()} 
+                            })()}
                             onChange={(e) => updateTargeting('countries', e.target.value)}
                             style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", outline: "none", fontSize: 14 }}
                           />
@@ -3100,26 +3101,26 @@ export default function Dashboard() {
                         <div style={{ display: "flex", gap: 12 }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>Age Min</div>
-                            <input 
+                            <input
                               type="number" min="18" max="65"
                               value={(() => {
                                 let t = editData.targeting;
-                                if (typeof t === 'string') try { t = JSON.parse(t); } catch(e) { t = {}; }
+                                if (typeof t === 'string') try { t = JSON.parse(t); } catch (e) { t = {}; }
                                 return t?.age_min || 18;
-                              })()} 
+                              })()}
                               onChange={(e) => updateTargeting('age_min', e.target.value)}
                               style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", outline: "none", fontSize: 14 }}
                             />
                           </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>Age Max</div>
-                            <input 
+                            <input
                               type="number" min="18" max="65"
                               value={(() => {
                                 let t = editData.targeting;
-                                if (typeof t === 'string') try { t = JSON.parse(t); } catch(e) { t = {}; }
+                                if (typeof t === 'string') try { t = JSON.parse(t); } catch (e) { t = {}; }
                                 return t?.age_max || 65;
-                              })()} 
+                              })()}
                               onChange={(e) => updateTargeting('age_max', e.target.value)}
                               style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", outline: "none", fontSize: 14 }}
                             />
@@ -3128,10 +3129,10 @@ export default function Dashboard() {
                         <div style={{ display: "flex", gap: 12 }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>Gender</div>
-                            <select 
+                            <select
                               value={(() => {
                                 let t = editData.targeting;
-                                if (typeof t === 'string') try { t = JSON.parse(t); } catch(e) { t = {}; }
+                                if (typeof t === 'string') try { t = JSON.parse(t); } catch (e) { t = {}; }
                                 return t?.genders?.[0] || '0';
                               })()}
                               onChange={(e) => updateTargeting('gender', e.target.value)}
@@ -3144,12 +3145,12 @@ export default function Dashboard() {
                           </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>End Date (Optional)</div>
-                            <input 
-                              type="datetime-local" 
-                              value={editData.end_time ? new Date(editData.end_time).toISOString().slice(0,16) : ""} 
+                            <input
+                              type="datetime-local"
+                              value={editData.end_time ? new Date(editData.end_time).toISOString().slice(0, 16) : ""}
                               onChange={(e) => {
                                 const newDate = e.target.value ? new Date(e.target.value).toISOString() : null;
-                                setEditData({...editData, end_time: newDate});
+                                setEditData({ ...editData, end_time: newDate });
                               }}
                               style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", outline: "none", fontSize: 14 }}
                             />
@@ -3159,11 +3160,11 @@ export default function Dashboard() {
                     )}
 
                     <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                      <button 
+                      <button
                         onClick={() => setEditModalOpen(false)}
                         style={{ flex: 1, padding: 12, borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 600, color: "var(--text)" }}
                       >Cancel</button>
-                      <button 
+                      <button
                         onClick={saveEdit}
                         disabled={editSaving}
                         style={{ flex: 1, padding: 12, borderRadius: 8, background: "var(--primary)", border: "none", cursor: editSaving ? "default" : "pointer", fontWeight: 600, color: "#fff", display: "flex", justifyContent: "center", alignItems: "center", gap: 8, opacity: editSaving ? 0.7 : 1 }}
@@ -3197,8 +3198,8 @@ export default function Dashboard() {
               onClick={fetchMetaInsights}
               disabled={metaReportsLoading}
               style={{
-                padding: "8px 16px", borderRadius: "10px", border: "1px solid var(--border)", 
-                background: "#fff", cursor: metaReportsLoading ? "not-allowed" : "pointer", 
+                padding: "8px 16px", borderRadius: "10px", border: "1px solid var(--border)",
+                background: "#fff", cursor: metaReportsLoading ? "not-allowed" : "pointer",
                 fontSize: 13, display: "flex", alignItems: "center", gap: 8,
                 opacity: metaReportsLoading ? 0.6 : 1, transition: "all 0.2s"
               }}
@@ -3234,7 +3235,7 @@ export default function Dashboard() {
           )}
 
           {metaReportsLoading && !metaInsights && (
-             <Card>
+            <Card>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "60px 20px", gap: 16 }}>
                 <Spinner size={32} color="var(--primary)" />
                 <div style={{ fontSize: 15, fontWeight: 600, color: "var(--primary)" }}>Connecting to Meta Graph API...</div>
@@ -3246,29 +3247,29 @@ export default function Dashboard() {
             <>
               {/* Account Level KPIs */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-3">
-                <MetricCard 
-                  label="Total Spend" 
-                  value={`$${parseFloat(metaInsights.spend || 0).toFixed(2)}`} 
-                  sub="All Time" 
-                  color="var(--blue)" bg="var(--blue-light)" 
+                <MetricCard
+                  label="Total Spend"
+                  value={`$${parseFloat(metaInsights.spend || 0).toFixed(2)}`}
+                  sub="All Time"
+                  color="var(--blue)" bg="var(--blue-light)"
                 />
-                <MetricCard 
-                  label="Impressions" 
-                  value={parseFloat(metaInsights.impressions || "0").toLocaleString()} 
-                  sub={`Reach: ${parseFloat(metaInsights.reach || "0").toLocaleString()}`} 
-                  color="var(--primary)" bg="var(--primary-light)" 
+                <MetricCard
+                  label="Impressions"
+                  value={parseFloat(metaInsights.impressions || "0").toLocaleString()}
+                  sub={`Reach: ${parseFloat(metaInsights.reach || "0").toLocaleString()}`}
+                  color="var(--primary)" bg="var(--primary-light)"
                 />
-                <MetricCard 
-                  label="Link Clicks" 
-                  value={parseFloat(metaInsights.linkClicks || "0").toLocaleString()} 
-                  sub={`CTR: ${parseFloat(metaInsights.inline_link_click_ctr || 0).toFixed(2)}%`} 
-                  color="var(--amber)" bg="var(--amber-light)" 
+                <MetricCard
+                  label="Link Clicks"
+                  value={parseFloat(metaInsights.linkClicks || "0").toLocaleString()}
+                  sub={`CTR: ${parseFloat(metaInsights.inline_link_click_ctr || 0).toFixed(2)}%`}
+                  color="var(--amber)" bg="var(--amber-light)"
                 />
-                <MetricCard 
-                  label="Conversions" 
-                  value={parseFloat(metaInsights.leads || "0").toLocaleString()} 
-                  sub="Leads/Responses" 
-                  color="var(--green)" bg="var(--green-light)" 
+                <MetricCard
+                  label="Conversions"
+                  value={parseFloat(metaInsights.leads || "0").toLocaleString()}
+                  sub="Leads/Responses"
+                  color="var(--green)" bg="var(--green-light)"
                 />
               </div>
 
@@ -3277,7 +3278,7 @@ export default function Dashboard() {
                 <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border-light)" }}>
                   <span style={{ fontSize: 15, fontWeight: 700 }}>Campaign Breakdown</span>
                 </div>
-                
+
                 {metaCampaignInsights.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                     No campaigns found
@@ -3418,7 +3419,7 @@ export default function Dashboard() {
                         display: "flex", gap: 16, background: "var(--surface)", border: "1px solid var(--border-light)",
                         borderRadius: "var(--radius-md)", padding: 16, alignItems: "center"
                       }}>
-                        <div style={{ 
+                        <div style={{
                           width: 100, height: 100, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)",
                           background: "var(--card-bg)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0
                         }}>
@@ -3438,7 +3439,7 @@ export default function Dashboard() {
                             />
                           </div>
                           <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Ad ID: {ad.id}</div>
-                          
+
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             <div style={{ background: "#fff", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-light)" }}>
                               <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>Spend</div>
@@ -3472,9 +3473,9 @@ export default function Dashboard() {
           SOCIAL-DASH — Creator Studio Section
       ═══════════════════════════════════════════════════════ */}
       {tab === "social-dash" && (
-        <div className="animate-fade-in" style={{ 
-          margin: "-40px", 
-          padding: "40px", 
+        <div className="animate-fade-in" style={{
+          margin: "-40px",
+          padding: "40px",
           minHeight: "calc(100vh - 100px)",
           borderRadius: "var(--radius-lg)"
         }}>
@@ -3504,7 +3505,7 @@ export default function Dashboard() {
                   {newsletterSubTab === "services" && "Configure the medical specialties and services for your practice."}
                 </p>
               </div>
-              
+
               <div style={{ display: "flex", gap: 8, background: "var(--surface)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
                 {[
                   { id: "generate", label: "Generate", icon: "📧" },
@@ -3537,13 +3538,18 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          
+
           {newsletterSubTab === "generate" && <GenerateNewsletter />}
           {newsletterSubTab === "campaign" && <CreateCampaign />}
           {newsletterSubTab === "history" && <NewsletterHistory />}
           {newsletterSubTab === "services" && <ManageServices />}
         </NewsletterProviders>
       )}
+
+      {/* ═══════════════════════════════════════════════════════
+          OUTREACH — Integrated SPA Section
+      ═══════════════════════════════════════════════════════ */}
+      {tab === "outreach" && <OutreachManager />}
 
       {/* ═══════════════════════════════════════════════════════
           AD DETAILS MODAL (POP-UP)

@@ -29,6 +29,13 @@ const navItems = [
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
+const outreachItems = [
+  { href: '/dashboard/outreach/campaigns', label: 'Campaigns', icon: Mail },
+  { href: '/dashboard/outreach/scraper', label: 'Lead Scraper', icon: Search },
+  { href: '/dashboard/outreach/cleanup', label: 'Cleanup', icon: Trash2 },
+  { href: '/dashboard/outreach/analytics', label: 'Analytics', icon: BarChart3 },
+];
+
 const newsletterItems = [
   { href: '/dashboard/newsletter/generate', label: 'Generate', icon: FileText },
   { href: '/dashboard/newsletter/campaign', label: 'Create Campaign', icon: PlusCircle },
@@ -66,6 +73,30 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        <div className="mt-8">
+          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-white/40">
+            Outreach
+          </p>
+          {outreachItems.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href || pathname.startsWith(href + '/');
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                  isActive
+                    ? 'bg-[#0077b6] text-white shadow-md'
+                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                )}
+              >
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
 
         <div className="mt-8">
           <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-white/40">

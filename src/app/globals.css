@@ -8,103 +8,103 @@
 /* ── 1. CORE DESIGN TOKENS (hex, for inline styles throughout page.js) ── */
 :root {
   /* Brand Blue */
-  --primary:        #2563EB;
-  --primary-light:  #EFF6FF;
-  --primary-mid:    #DBEAFE;
-  --primary-dark:   #1D4ED8;
+  --primary: #2563EB;
+  --primary-light: #EFF6FF;
+  --primary-mid: #DBEAFE;
+  --primary-dark: #1D4ED8;
   --primary-strong: #1E40AF;
 
   /* Teal / Secondary */
-  --secondary:       #0891B2;
+  --secondary: #0891B2;
   --secondary-light: #ECFEFF;
-  --secondary-dark:  #0E7490;
+  --secondary-dark: #0E7490;
 
   /* Green */
-  --green:       #059669;
+  --green: #059669;
   --green-light: #ECFDF5;
-  --green-dark:  #047857;
+  --green-dark: #047857;
 
   /* Amber */
-  --amber:       #D97706;
+  --amber: #D97706;
   --amber-light: #FFFBEB;
-  --amber-dark:  #B45309;
+  --amber-dark: #B45309;
 
   /* Red / Error */
-  --red:          #DC2626;
-  --red-light:    #FEF2F2;
-  --red-dark:     #B91C1C;
-  --red-strong:   #991B1B;
-  --red-error:    #EF4444;
+  --red: #DC2626;
+  --red-light: #FEF2F2;
+  --red-dark: #B91C1C;
+  --red-strong: #991B1B;
+  --red-error: #EF4444;
   --red-error-bg: #FEF2F2;
 
   /* Purple */
-  --purple:       #7C3AED;
+  --purple: #7C3AED;
   --purple-light: #F5F3FF;
-  --purple-dark:  #6D28D9;
+  --purple-dark: #6D28D9;
 
   /* Blue info */
-  --blue:       #3B82F6;
+  --blue: #3B82F6;
   --blue-light: #EFF6FF;
 
   /* Page / Surfaces */
-  --bg:           #F8FAFC;
-  --bg-light:     #F1F5F9;
-  --card-bg:      #FFFFFF;
-  --surface:      #F8FAFC;
-  --surface-hover:#F1F5F9;
+  --bg: #F8FAFC;
+  --bg-light: #F1F5F9;
+  --card-bg: #FFFFFF;
+  --surface: #F8FAFC;
+  --surface-hover: #F1F5F9;
 
   /* Borders */
-  --border:       #E2E8F0;
+  --border: #E2E8F0;
   --border-light: #F1F5F9;
-  --border-mid:   #CBD5E1;
+  --border-mid: #CBD5E1;
 
   /* Typography */
-  --text:       #0F172A;
-  --text-body:  #334155;
+  --text: #0F172A;
+  --text-body: #334155;
   --text-muted: #64748B;
-  --text-dim:   #94A3B8;
+  --text-dim: #94A3B8;
 
   /* Border radius */
-  --radius-xs:   4px;
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   16px;
-  --radius-xl:   20px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-pill: 9999px;
   --radius-full: 50%;
 
   /* Shadows */
-  --shadow-xs:  0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-sm:  0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-  --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
 
   /* Font */
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* ── 2. SHADCN-COMPATIBLE TOKENS (for dashboard/ and ui/ components)
           Named differently to avoid ANY clash with the main tokens above. ── */
-  --shadcn-bg:              #F8FAFC;
-  --shadcn-fg:              #0F172A;
-  --shadcn-card:            #FFFFFF;
-  --shadcn-card-fg:         #0F172A;
-  --shadcn-popover:         #FFFFFF;
-  --shadcn-popover-fg:      #0F172A;
-  --shadcn-primary:         #2563EB;
-  --shadcn-primary-fg:      #FFFFFF;
-  --shadcn-secondary:       #F1F5F9;
-  --shadcn-secondary-fg:    #0F172A;
-  --shadcn-muted:           #F1F5F9;
-  --shadcn-muted-fg:        #64748B;
-  --shadcn-accent:          #F1F5F9;
-  --shadcn-accent-fg:       #0F172A;
-  --shadcn-destructive:     #EF4444;
-  --shadcn-destructive-fg:  #FFFFFF;
-  --shadcn-border:          #E2E8F0;
-  --shadcn-input:           #E2E8F0;
-  --shadcn-ring:            #2563EB;
-  --shadcn-radius:          0.5rem;
+  --shadcn-bg: #F8FAFC;
+  --shadcn-fg: #0F172A;
+  --shadcn-card: #FFFFFF;
+  --shadcn-card-fg: #0F172A;
+  --shadcn-popover: #FFFFFF;
+  --shadcn-popover-fg: #0F172A;
+  --shadcn-primary: #2563EB;
+  --shadcn-primary-fg: #FFFFFF;
+  --shadcn-secondary: #F1F5F9;
+  --shadcn-secondary-fg: #0F172A;
+  --shadcn-muted: #F1F5F9;
+  --shadcn-muted-fg: #64748B;
+  --shadcn-accent: #F1F5F9;
+  --shadcn-accent-fg: #0F172A;
+  --shadcn-destructive: #EF4444;
+  --shadcn-destructive-fg: #FFFFFF;
+  --shadcn-border: #E2E8F0;
+  --shadcn-input: #E2E8F0;
+  --shadcn-ring: #2563EB;
+  --shadcn-radius: 0.5rem;
 }
 
 /* ── 3. TAILWIND v4 THEME OVERRIDES
@@ -112,28 +112,28 @@
         Uses DIRECT values — no hsl(var(...)) to avoid cascade conflicts. ── */
 @theme {
   /* ── Shadcn semantic colours (used by src/components/ui/*.tsx) ── */
-  --color-background:           #F8FAFC;
-  --color-foreground:           #0F172A;
-  --color-card:                 #FFFFFF;
-  --color-card-foreground:      #0F172A;
-  --color-popover:              #FFFFFF;
-  --color-popover-foreground:   #0F172A;
-  --color-primary:              #2563EB;
-  --color-primary-foreground:   #FFFFFF;
-  --color-secondary:            #F1F5F9;
+  --color-background: #F8FAFC;
+  --color-foreground: #0F172A;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #0F172A;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #0F172A;
+  --color-primary: #2563EB;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #F1F5F9;
   --color-secondary-foreground: #0F172A;
-  --color-muted:                #F1F5F9;
-  --color-muted-foreground:     #64748B;
-  --color-accent:               #F1F5F9;
-  --color-accent-foreground:    #0F172A;
-  --color-destructive:          #EF4444;
-  --color-destructive-foreground:#FFFFFF;
-  --color-border:               #E2E8F0;
-  --color-input:                #E2E8F0;
-  --color-ring:                 #2563EB;
+  --color-muted: #F1F5F9;
+  --color-muted-foreground: #64748B;
+  --color-accent: #F1F5F9;
+  --color-accent-foreground: #0F172A;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-input: #E2E8F0;
+  --color-ring: #2563EB;
 
   /* ── Blue scale (focus rings, etc.) ── */
-  --color-blue-50:  #EFF6FF;
+  --color-blue-50: #EFF6FF;
   --color-blue-100: #DBEAFE;
   --color-blue-200: #BFDBFE;
   --color-blue-300: #93C5FD;
@@ -145,7 +145,7 @@
   --color-blue-900: #1E3A8A;
 
   /* ── Slate/gray scale aligned to our neutral tokens ── */
-  --color-slate-50:  #F8FAFC;
+  --color-slate-50: #F8FAFC;
   --color-slate-100: #F1F5F9;
   --color-slate-200: #E2E8F0;
   --color-slate-300: #CBD5E1;
@@ -157,7 +157,7 @@
   --color-slate-900: #0F172A;
 
   /* ── Gray (mapped to same as slate) ── */
-  --color-gray-50:  #F8FAFC;
+  --color-gray-50: #F8FAFC;
   --color-gray-100: #F1F5F9;
   --color-gray-200: #E2E8F0;
   --color-gray-300: #CBD5E1;
@@ -169,14 +169,34 @@
   --color-gray-900: #0F172A;
 
   /* ── Radix/Accordion animations ── */
-  @keyframes accordion-down { from { height: 0; } to { height: var(--radix-accordion-content-height); } }
-  @keyframes accordion-up   { from { height: var(--radix-accordion-content-height); } to { height: 0; } }
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+
+    to {
+      height: 0;
+    }
+  }
+
   --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up:   accordion-up   0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
 }
 
 /* ── 4. BASE RESET ── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -202,10 +222,23 @@ body {
 }
 
 /* ── 5. SCROLLBAR ── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-mid);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
 
 /* ── 6. RANGE INPUT ── */
 input[type="range"] {
@@ -218,6 +251,7 @@ input[type="range"] {
   outline: none;
   cursor: pointer;
 }
+
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 17px;
@@ -226,14 +260,21 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--primary);
   cursor: pointer;
   border: 3px solid white;
-  box-shadow: 0 1px 4px rgba(37,99,235,0.3);
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
   transition: transform 0.15s;
 }
-input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
 input[type="range"]::-moz-range-thumb {
-  width: 17px; height: 17px; border-radius: 50%;
-  background: var(--primary); border: 3px solid white;
-  box-shadow: 0 1px 4px rgba(37,99,235,0.3);
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid white;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
 }
 
 pre {
@@ -241,29 +282,139 @@ pre {
 }
 
 /* ── 7. ANIMATIONS ── */
-@keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp   { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn   { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-@keyframes spin      { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes pulse     { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes shimmer   { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-@keyframes scan      { 0% { left: -30%; } 100% { left: 100%; } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
 
-.animate-fade-in    { animation: fadeIn    0.25s ease-out; }
-.animate-slide-up   { animation: slideUp   0.3s  ease-out; }
-.animate-slide-down { animation: slideDown 0.22s ease-out; }
-.animate-scale-in   { animation: scaleIn   0.22s ease-out; }
-.animate-pulse      { animation: pulse     2s ease-in-out infinite; }
-.animate-spin       { animation: spin      0.9s linear infinite; }
-.animate-toast      { animation: slideInRight 0.28s ease-out forwards; }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes scan {
+  0% {
+    left: -30%;
+  }
+
+  100% {
+    left: 100%;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.22s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.22s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 0.9s linear infinite;
+}
+
+.animate-toast {
+  animation: slideInRight 0.28s ease-out forwards;
+}
 
 /* ── 8. MOBILE RESPONSIVENESS ── */
 @media (max-width: 768px) {
   :root {
-    --card-padding:       12px;
-    --metric-value-size:  22px;
+    --card-padding: 12px;
+    --metric-value-size: 22px;
   }
 
   .tab-nav {
@@ -275,6 +426,8 @@ pre {
     margin-bottom: 20px !important;
     gap: 6px !important;
   }
-  .tab-nav::-webkit-scrollbar { display: none; }
-}
 
+  .tab-nav::-webkit-scrollbar {
+    display: none;
+  }
+}
