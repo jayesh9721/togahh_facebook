@@ -114,7 +114,7 @@ export default function EmailPreview({ data }: { data: NewsletterData }) {
             {mainStory && (
               <div style={{ borderLeft: '4px solid #6366f1', paddingLeft: '24px' }}>
                 {mainStory.title && (
-                  <p style={{ fontSize: '12px', fontBold: '800', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#4f46e5', marginBottom: '8px', fontWeight: 800 }}>
+                  <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#4f46e5', marginBottom: '8px', fontWeight: 800 }}>
                     {mainStory.title}
                   </p>
                 )}
@@ -128,7 +128,7 @@ export default function EmailPreview({ data }: { data: NewsletterData }) {
             {keyInsights && keyInsights.bullets.length > 0 && (
               <div style={{ backgroundColor: '#f5f3ff', borderRadius: '20px', padding: '32px' }}>
                 {keyInsights.title && (
-                  <p style={{ fontSize: '12px', fontBold: '800', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#4f46e5', marginBottom: '16px', fontWeight: 800 }}>
+                  <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#4f46e5', marginBottom: '16px', fontWeight: 800 }}>
                     {keyInsights.title}
                   </p>
                 )}
@@ -147,7 +147,7 @@ export default function EmailPreview({ data }: { data: NewsletterData }) {
             {industryUpdate && industryUpdate.bullets.length > 0 && (
               <div style={{ backgroundColor: '#f9fafb', borderRadius: '20px', padding: '32px', border: '1px solid #f3f4f6' }}>
                 {industryUpdate.title && (
-                  <p style={{ fontSize: '12px', fontBold: '800', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '16px', fontWeight: 800 }}>
+                  <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '16px', fontWeight: 800 }}>
                     {industryUpdate.title}
                   </p>
                 )}
