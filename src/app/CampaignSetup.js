@@ -29,7 +29,10 @@ const DEFAULT_CONFIG = {
     age_min: 30,
     age_max: 65,
     gender: 0,
-    geo_targeting: ["CA", "GB"],
+    geo_locations: {
+      countries: ["CA", "GB"],
+      location_types: ["home", "recent"],
+    },
     optimization_goal: "OFFSITE_CONVERSIONS",
     targeting_keywords: [
       "healthcare services",
@@ -554,11 +557,9 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
                 <input value={config.ad_set?.name || ""} onChange={(e) => setField("ad_set", "name", e.target.value)} style={inputStyle} />
               </FieldGroup>
               <FieldGroup label="Target Locations" span={2}>
-                <input 
-                  value={config.ad_set?.geo_targeting?.join(", ") || ""} 
-                  onChange={(e) => setField("ad_set", "geo_targeting", e.target.value.split(",").map(s => s.trim().toUpperCase()))} 
-                  placeholder="e.g. US, CA, LONDON"
-                  style={inputStyle} 
+                <LocationSearch 
+                  geoLocations={config.ad_set?.geo_locations} 
+                  onChange={(newGeo) => setField("ad_set", "geo_locations", newGeo)} 
                 />
               </FieldGroup>
               <FieldGroup label="Optimization Goal" span={2}>
@@ -841,3 +842,139 @@ const navConnectorStyle = {
   background: "var(--border)",
   zIndex: 1
 };
+
+function LocationSearch({ geoLocations, onChange }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const selectedPills = [];
+  if (geoLocations) {
+    if (geoLocations.countries) geoLocations.countries.forEach(c => selectedPills.push({ type: 'country', key: c, name: c }));
+    if (geoLocations.cities) geoLocations.cities.forEach(c => selectedPills.push({ type: 'city', key: c.key, name: c.name || c.key }));
+    if (geoLocations.regions) geoLocations.regions.forEach(c => selectedPills.push({ type: 'region', key: c.key, name: c.name || c.key }));
+    if (geoLocations.zips) geoLocations.zips.forEach(c => selectedPills.push({ type: 'zip', key: c.key, name: c.name || c.key }));
+  }
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/meta/locations?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setResults(data || []);
+        setShowDropdown(true);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const handleSelect = (item) => {
+    const newGeo = { ...geoLocations, location_types: geoLocations?.location_types || ["home", "recent"] };
+    
+    if (item.type === "country") {
+      newGeo.countries = [...(newGeo.countries || []), item.country_code];
+      // Prevent overlap: Remove any cities/regions/zips that belong to this newly selected country
+      if (newGeo.cities) newGeo.cities = newGeo.cities.filter(c => c.country_code !== item.country_code);
+      if (newGeo.regions) newGeo.regions = newGeo.regions.filter(c => c.country_code !== item.country_code);
+      if (newGeo.zips) newGeo.zips = newGeo.zips.filter(c => c.country_code !== item.country_code);
+    } else {
+      const locObj = { key: item.key, name: item.name, country_code: item.country_code };
+      if (item.type === "city") newGeo.cities = [...(newGeo.cities || []), locObj];
+      if (item.type === "region") newGeo.regions = [...(newGeo.regions || []), locObj];
+      if (item.type === "zip") newGeo.zips = [...(newGeo.zips || []), locObj];
+      
+      // Prevent overlap: Remove the parent country if it is already targeted broadly
+      if (item.country_code && newGeo.countries && newGeo.countries.includes(item.country_code)) {
+         newGeo.countries = newGeo.countries.filter(c => c !== item.country_code);
+      }
+    }
+    
+    // Cleanup empty arrays to satisfy Meta API schema
+    if (newGeo.countries && newGeo.countries.length === 0) delete newGeo.countries;
+    if (newGeo.cities && newGeo.cities.length === 0) delete newGeo.cities;
+    if (newGeo.regions && newGeo.regions.length === 0) delete newGeo.regions;
+    if (newGeo.zips && newGeo.zips.length === 0) delete newGeo.zips;
+
+    onChange(newGeo);
+    setQuery("");
+    setShowDropdown(false);
+  };
+
+  const handleRemove = (pill) => {
+    const newGeo = { ...geoLocations };
+    if (pill.type === "country") {
+      newGeo.countries = newGeo.countries.filter(c => c !== pill.key);
+      if (newGeo.countries.length === 0) delete newGeo.countries;
+    }
+    if (pill.type === "city") {
+      newGeo.cities = newGeo.cities.filter(c => c.key !== pill.key);
+      if (newGeo.cities.length === 0) delete newGeo.cities;
+    }
+    if (pill.type === "region") {
+      newGeo.regions = newGeo.regions.filter(c => c.key !== pill.key);
+      if (newGeo.regions.length === 0) delete newGeo.regions;
+    }
+    if (pill.type === "zip") {
+      newGeo.zips = newGeo.zips.filter(c => c.key !== pill.key);
+      if (newGeo.zips.length === 0) delete newGeo.zips;
+    }
+    onChange(newGeo);
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+        <input 
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
+          onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+          placeholder="Search for countries, cities, or regions..."
+          style={{ ...inputStyle, paddingRight: 36 }}
+        />
+        {loading && <div style={{ position: "absolute", right: 12 }}><Spinner size={16} /></div>}
+      </div>
+      
+      {showDropdown && results.length > 0 && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 50, maxHeight: 200, overflowY: "auto", marginTop: 4 }}>
+          {results.map(r => (
+            <div 
+              key={r.key} 
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(r); }}
+              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid var(--border-light)", fontSize: 13, display: "flex", flexDirection: "column" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+            >
+              <div style={{ fontWeight: 600, color: "var(--text)" }}>{r.name}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                {r.type?.toUpperCase()} • {r.country_name || r.country_code || "Unknown"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {selectedPills.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+          {selectedPills.map(p => (
+            <div key={`${p.type}-${p.key}`} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--primary-light)", color: "var(--primary-dark)", padding: "4px 10px", borderRadius: "var(--radius-pill)", fontSize: 12, fontWeight: 600 }}>
+              {p.type === 'country' ? '🌐' : p.type === 'city' ? '🏙️' : '🗺️'} {p.name}
+              <button onClick={(e) => { e.preventDefault(); handleRemove(p); }} style={{ border: "none", background: "transparent", color: "var(--primary)", cursor: "pointer", fontSize: 14, padding: 0 }}>&times;</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

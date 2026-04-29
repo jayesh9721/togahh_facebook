@@ -23,26 +23,7 @@ import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
 import CampaignSetup from "./CampaignSetup";
 import SocialDash from "./SocialDash";
-// Newsletter Components
-import GenerateNewsletter from "@/components/newsletter/GenerateNewsletter";
-import CreateCampaign from "@/components/newsletter/CreateCampaign";
-import NewsletterHistory from "@/components/newsletter/NewsletterHistory";
-import ManageServices from "@/components/newsletter/ManageServices";
-import { NewsletterProviders } from "@/components/newsletter/Providers";
-import OutreachManager from "@/components/outreach/OutreachManager";
 import "./globals.css";
-
-// ─── NEWSLETTER REDIRECT ─────────────────────────────────────
-function NewsletterRedirect() {
-  const router = useRouter();
-  useEffect(() => { router.push("/newsletter/generate"); }, [router]);
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300, flexDirection: "column", gap: 12 }}>
-      <div style={{ width: 32, height: 32, border: "3px solid var(--primary)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
-      <span style={{ color: "var(--text-dim)", fontSize: 14 }}>Opening Newsletter…</span>
-    </div>
-  );
-}
 
 // ─── CONSTANTS ───────────────────────────────────────────────
 const API_URL = "/api/trigger-n8n";
@@ -57,8 +38,6 @@ const TABS = [
 
   { id: "reports", label: "Reports", icon: "◧" },
   { id: "social-dash", label: "Social-Dash", icon: "🎨" },
-  { id: "outreach", label: "Outreach", icon: "🌐" },
-  { id: "newsletter", label: "Newsletter", icon: "📧" },
 ];
 
 const TOPICS = [
@@ -75,7 +54,6 @@ const TOPICS = [
 export default function Dashboard() {
   const router = useRouter();
   const [tab, setTab] = useState("overview");
-  const [newsletterSubTab, setNewsletterSubTab] = useState("generate");
   const [selectedTopic, setSelectedTopic] = useState(TOPICS[1]);
   const [user, setUser] = useState(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
@@ -160,10 +138,16 @@ export default function Dashboard() {
   const [editingAdData, setEditingAdData] = useState({});
   const [isSavingAd, setIsSavingAd] = useState(false);
   const [isRetryingAd, setIsRetryingAd] = useState(false);
+  const [sentIdeaIds, setSentIdeaIds] = useState({});
+  const [generatedIdeas, setGeneratedIdeas] = useState({});
   const [retryPrompt, setRetryPrompt] = useState("");
   const [isRetryingSubmit, setIsRetryingSubmit] = useState(false);
   const [selectedMetaCampaign, setSelectedMetaCampaign] = useState(null);
   const [launchAdCandidate, setLaunchAdCandidate] = useState(null);
+
+  // Custom Media Upload
+  const [customUploadLoading, setCustomUploadLoading] = useState(false);
+  const [customUploadError, setCustomUploadError] = useState("");
 
   // Live Campaigns State
   const [liveCampaigns, setLiveCampaigns] = useState([]);
@@ -2427,7 +2411,61 @@ export default function Dashboard() {
                                 </select>
                               </div>
                               <div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase" }}>Script / Storyboard Idea</div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Script / Storyboard Idea</div>
+                                  <button
+                                    disabled={sentIdeaIds[item.id]}
+                                    onClick={async () => {
+                                      if (sentIdeaIds[item.id]) return;
+                                      setSentIdeaIds(prev => ({ ...prev, [item.id]: true }));
+                                      addSbToast(`Generating Video ${idx + 1} ideas via webhook...`);
+                                      console.log("Sending to Webhook:", item);
+                                      try {
+                                        const res = await fetch("https://n8n.srv881198.hstgr.cloud/webhook/5dd8a76d-f4e4-45b5-808a-c784057d29b1", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify(item),
+                                          cache: "no-store"
+                                        });
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          let ideasArr = [];
+                                          if (Array.isArray(data)) {
+                                            if (data[0] && Array.isArray(data[0].ideas)) ideasArr = data[0].ideas;
+                                            else if (data[0] && data[0].idea) ideasArr = data;
+                                            else if (Array.isArray(data[0])) ideasArr = data[0];
+                                          } else if (data && Array.isArray(data.ideas)) {
+                                            ideasArr = data.ideas;
+                                          }
+                                          if (ideasArr && ideasArr.length > 0) {
+                                            setGeneratedIdeas(prev => ({ ...prev, [item.id]: ideasArr }));
+                                            addSbToast("Ideas generated successfully!", "success");
+                                          } else {
+                                            console.error("Unrecognized JSON format from n8n:", data);
+                                            addSbToast("No valid ideas format returned.", "error");
+                                          }
+                                        } else {
+                                          addSbToast("Failed to generate ideas", "error");
+                                        }
+                                      } catch (err) {
+                                        addSbToast("Error fetching ideas", "error");
+                                      } finally {
+                                        setSentIdeaIds(prev => ({ ...prev, [item.id]: false }));
+                                      }
+                                    }}
+                                    style={{
+                                      padding: "4px 10px", borderRadius: "var(--radius-sm)", border: "none",
+                                      background: sentIdeaIds[item.id] ? "#4a4a6a" : "#1a1a2e", color: "#fff", fontSize: 10, fontWeight: 700,
+                                      cursor: sentIdeaIds[item.id] ? "not-allowed" : "pointer",
+                                      transition: "all 0.2s", textTransform: "uppercase",
+                                      opacity: sentIdeaIds[item.id] ? 0.6 : 1
+                                    }}
+                                    onMouseEnter={(e) => { if (!sentIdeaIds[item.id]) e.currentTarget.style.background = "#2a2a4e"; }}
+                                    onMouseLeave={(e) => { if (!sentIdeaIds[item.id]) e.currentTarget.style.background = "#1a1a2e"; }}
+                                  >
+                                    {sentIdeaIds[item.id] ? "Generating..." : "Generate an idea"}
+                                  </button>
+                                </div>
                                 <textarea
                                   placeholder="e.g. generate a video with offer and sales ads..."
                                   value={item.idea}
@@ -2438,6 +2476,33 @@ export default function Dashboard() {
                                     fontSize: 12, outline: "none", color: "var(--text)", resize: "vertical", fontFamily: "inherit"
                                   }}
                                 />
+                                {generatedIdeas[item.id] && generatedIdeas[item.id].length > 0 && (
+                                  <div style={{
+                                    marginTop: 16, display: "flex", flexDirection: "column", gap: 12,
+                                    padding: "16px", borderRadius: "var(--radius-lg)",
+                                    border: "1px dashed var(--primary-light)",
+                                    background: "rgba(99, 102, 241, 0.04)"
+                                  }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.02em" }}>✨ AI Generated Ideas (Click to use)</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                                      {generatedIdeas[item.id].map(ideaObj => (
+                                        <div
+                                          key={ideaObj.id}
+                                          onClick={() => updateCreateTabItemField(idx, "idea", ideaObj.idea)}
+                                          style={{
+                                            padding: "14px 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--primary-light)",
+                                            background: "var(--surface)", cursor: "pointer", fontSize: 12, color: "var(--text-body)",
+                                            transition: "all 0.2s", lineHeight: 1.5, boxShadow: "0 2px 8px rgba(0,0,0,0.02)"
+                                          }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)"; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--primary-light)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)"; }}
+                                        >
+                                          {ideaObj.idea}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ) : (
@@ -2457,7 +2522,61 @@ export default function Dashboard() {
                                 </select>
                               </div>
                               <div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase" }}>Image Description / Prompt</div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Image Description / Prompt</div>
+                                  <button
+                                    disabled={sentIdeaIds[item.id]}
+                                    onClick={async () => {
+                                      if (sentIdeaIds[item.id]) return;
+                                      setSentIdeaIds(prev => ({ ...prev, [item.id]: true }));
+                                      addSbToast(`Generating Image ${idx + 1} ideas via webhook...`);
+                                      console.log("Sending to Webhook:", item);
+                                      try {
+                                        const res = await fetch("https://n8n.srv881198.hstgr.cloud/webhook/5dd8a76d-f4e4-45b5-808a-c784057d29b1", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify(item),
+                                          cache: "no-store"
+                                        });
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          let ideasArr = [];
+                                          if (Array.isArray(data)) {
+                                            if (data[0] && Array.isArray(data[0].ideas)) ideasArr = data[0].ideas;
+                                            else if (data[0] && data[0].idea) ideasArr = data;
+                                            else if (Array.isArray(data[0])) ideasArr = data[0];
+                                          } else if (data && Array.isArray(data.ideas)) {
+                                            ideasArr = data.ideas;
+                                          }
+                                          if (ideasArr && ideasArr.length > 0) {
+                                            setGeneratedIdeas(prev => ({ ...prev, [item.id]: ideasArr }));
+                                            addSbToast("Ideas generated successfully!", "success");
+                                          } else {
+                                            console.error("Unrecognized JSON format from n8n:", data);
+                                            addSbToast("No valid ideas format returned.", "error");
+                                          }
+                                        } else {
+                                          addSbToast("Failed to generate ideas", "error");
+                                        }
+                                      } catch (err) {
+                                        addSbToast("Error fetching ideas", "error");
+                                      } finally {
+                                        setSentIdeaIds(prev => ({ ...prev, [item.id]: false }));
+                                      }
+                                    }}
+                                    style={{
+                                      padding: "4px 10px", borderRadius: "var(--radius-sm)", border: "none",
+                                      background: sentIdeaIds[item.id] ? "#4a4a6a" : "#1a1a2e", color: "#fff", fontSize: 10, fontWeight: 700,
+                                      cursor: sentIdeaIds[item.id] ? "not-allowed" : "pointer",
+                                      transition: "all 0.2s", textTransform: "uppercase",
+                                      opacity: sentIdeaIds[item.id] ? 0.6 : 1
+                                    }}
+                                    onMouseEnter={(e) => { if (!sentIdeaIds[item.id]) e.currentTarget.style.background = "#2a2a4e"; }}
+                                    onMouseLeave={(e) => { if (!sentIdeaIds[item.id]) e.currentTarget.style.background = "#1a1a2e"; }}
+                                  >
+                                    {sentIdeaIds[item.id] ? "Generating..." : "Generate an idea"}
+                                  </button>
+                                </div>
                                 <textarea
                                   placeholder="Describe the aesthetic, colors, and subject of the image..."
                                   value={item.idea}
@@ -2468,6 +2587,33 @@ export default function Dashboard() {
                                     fontSize: 12, outline: "none", color: "var(--text)", resize: "vertical", fontFamily: "inherit"
                                   }}
                                 />
+                                {generatedIdeas[item.id] && generatedIdeas[item.id].length > 0 && (
+                                  <div style={{
+                                    marginTop: 16, display: "flex", flexDirection: "column", gap: 12,
+                                    padding: "16px", borderRadius: "var(--radius-lg)",
+                                    border: "1px dashed var(--primary-light)",
+                                    background: "rgba(99, 102, 241, 0.04)"
+                                  }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.02em" }}>✨ AI Generated Ideas (Click to use)</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                                      {generatedIdeas[item.id].map(ideaObj => (
+                                        <div
+                                          key={ideaObj.id}
+                                          onClick={() => updateCreateTabItemField(idx, "idea", ideaObj.idea)}
+                                          style={{
+                                            padding: "14px 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--primary-light)",
+                                            background: "var(--surface)", cursor: "pointer", fontSize: 12, color: "var(--text-body)",
+                                            transition: "all 0.2s", lineHeight: 1.5, boxShadow: "0 2px 8px rgba(0,0,0,0.02)"
+                                          }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)"; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--primary-light)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)"; }}
+                                        >
+                                          {ideaObj.idea}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -2480,30 +2626,113 @@ export default function Dashboard() {
                   <div style={{ marginTop: 24, padding: "16px 20px", borderRadius: "var(--radius-lg)", background: "var(--surface)", border: "1px solid var(--border-light)" }}>
                     {(isStatusPolling || adStatus === "waiting") ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ position: "relative", height: 2, background: "var(--primary-light)", borderRadius: 1, overflow: "hidden", marginBottom: 12 }}>
-                          <div className="animate-pulse" style={{
-                            position: "absolute", top: 0, left: 0, height: "100%", width: "30%",
-                            background: "var(--primary)", borderRadius: 1,
-                            animation: "scan 2s linear infinite"
-                          }} />
-                        </div>
+                        {!workflowStatus?.toLowerCase().includes("completed") && (
+                          <div style={{ position: "relative", height: 2, background: "var(--primary-light)", borderRadius: 1, overflow: "hidden", marginBottom: 12 }}>
+                            <div className="animate-pulse" style={{
+                              position: "absolute", top: 0, left: 0, height: "100%", width: "30%",
+                              background: "var(--primary)", borderRadius: 1,
+                              animation: "scan 2s linear infinite"
+                            }} />
+                          </div>
+                        )}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div className="animate-pulse" style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--primary)" }} />
-                            <SectionTitle style={{ marginBottom: 0 }}>Workflow in Progress</SectionTitle>
+                            <div className={workflowStatus?.toLowerCase().includes("completed") ? "" : "animate-pulse"} style={{ width: 10, height: 10, borderRadius: "50%", background: workflowStatus?.toLowerCase().includes("completed") ? "var(--green)" : "var(--primary)" }} />
+                            <SectionTitle style={{ marginBottom: 0 }}>{workflowStatus?.toLowerCase().includes("completed") ? "Workflow Completed" : "Workflow in Progress"}</SectionTitle>
                           </div>
-                          <Badge text="RUNNING" color="var(--primary)" bg="var(--primary-light)" />
+                          {workflowStatus?.toLowerCase().includes("completed") ? (
+                            <Badge text="COMPLETED" color="var(--green)" bg="var(--green-light)" />
+                          ) : (
+                            <Badge text="RUNNING" color="var(--primary)" bg="var(--primary-light)" />
+                          )}
                         </div>
 
                         <div style={{ padding: "14px 18px", borderRadius: "var(--radius-md)", background: "var(--card-bg)", border: "1px solid var(--border-light)", display: "flex", flexDirection: "column", gap: 8 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Current Status</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--primary)", display: "flex", alignItems: "center", gap: 8 }}>
-                            <Spinner size={14} color="var(--primary)" />
+                          <div style={{ fontSize: 15, fontWeight: 700, color: workflowStatus?.toLowerCase().includes("completed") ? "var(--green)" : "var(--primary)", display: "flex", alignItems: "center", gap: 8 }}>
+                            {!workflowStatus?.toLowerCase().includes("completed") && <Spinner size={14} color="var(--primary)" />}
                             {workflowStatus || "Video is Generating..."}
                           </div>
                           <div style={{ fontSize: 11, color: "var(--text-dim)", fontStyle: "italic" }}>
                             n8n is orchestrating Claude 3.5 and Runway ML. Ad previews will refresh automatically upon completion.
                           </div>
+
+                          {/* Image & Video Generation Progress Bars */}
+                          {(() => {
+                            const lStatus = workflowStatus?.toLowerCase() || "";
+
+                            // Determine what to show based on status text or if we requested them
+                            const hasBoth = lStatus.includes("image/video");
+                            const showImage = hasBoth || lStatus.includes("image") || createTabAdsConfig.imageCount > 0;
+                            const showVideo = hasBoth || lStatus.includes("video") || createTabAdsConfig.videoCount > 0;
+
+                            // Determine completion
+                            const allDone = lStatus === "completed" || lStatus === "workflow completed";
+                            const imgDone = allDone || lStatus.includes("image ad completed") || lStatus.includes("image completed");
+                            const vidDone = allDone || lStatus.includes("video ad completed") || lStatus.includes("video completed");
+
+                            if (!workflowStatus || workflowStatus === "waiting") return null;
+
+                            return (
+                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 16 }}>
+                                {showImage && (
+                                  <div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", fontWeight: 600, marginBottom: 6 }}>
+                                      <span>{imgDone ? "Image Generation Completed" : "Generating Image (~1:30)"}</span>
+                                      <span>{imgDone ? "100%" : ""}</span>
+                                    </div>
+                                    <div style={{ position: "relative", height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                                      <style>{`
+                                        @keyframes fillImageGen {
+                                          0% { width: 0%; }
+                                          80% { width: 90%; }
+                                          100% { width: 98%; }
+                                        }
+                                      `}</style>
+                                      <div
+                                        style={{
+                                          position: "absolute", top: 0, left: 0, height: "100%",
+                                          background: imgDone ? "var(--green)" : "var(--primary)",
+                                          borderRadius: 3,
+                                          width: imgDone ? "100%" : "0%",
+                                          animation: !imgDone ? "fillImageGen 90s cubic-bezier(0.1, 0.7, 0.1, 1) forwards" : "none",
+                                          transition: "width 0.5s ease-out, background 0.5s"
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {showVideo && (
+                                  <div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", fontWeight: 600, marginBottom: 6 }}>
+                                      <span>{vidDone ? "Video Generation Completed" : "Generating Video (~10:00)"}</span>
+                                      <span>{vidDone ? "100%" : ""}</span>
+                                    </div>
+                                    <div style={{ position: "relative", height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                                      <style>{`
+                                        @keyframes fillVideoGen {
+                                          0% { width: 0%; }
+                                          80% { width: 90%; }
+                                          100% { width: 98%; }
+                                        }
+                                      `}</style>
+                                      <div
+                                        style={{
+                                          position: "absolute", top: 0, left: 0, height: "100%",
+                                          background: vidDone ? "var(--green)" : "var(--primary)",
+                                          borderRadius: 3,
+                                          width: vidDone ? "100%" : "0%",
+                                          animation: !vidDone ? "fillVideoGen 600s cubic-bezier(0.1, 0.7, 0.1, 1) forwards" : "none",
+                                          transition: "width 0.5s ease-out, background 0.5s"
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     ) : (
@@ -2548,20 +2777,7 @@ export default function Dashboard() {
           </Card>
 
 
-          {/* Top hook patterns reference — shown when analysis data available */}
-          {adStatus === "idle" && analysisData?.hooks_table?.length > 0 && (
-            <Card style={{ marginBottom: 14 }}>
-              <SectionTitle>Top Hook Patterns from Analysis</SectionTitle>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(analysisData.hooks_table || []).map((row, idx) => (
-                  <div key={idx} style={{ padding: "10px 12px", background: "var(--surface)", borderRadius: "var(--radius-md)", fontSize: 12, lineHeight: 1.5 }}>
-                    <div style={{ fontWeight: 600, color: "var(--primary)", marginBottom: 3 }}>{row?.pattern}</div>
-                    <div style={{ color: "var(--text-body)", fontStyle: "italic" }}>&ldquo;{row?.example}&rdquo;</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+
 
           {/* ── AD PREVIEWS ── */}
           {(() => {
@@ -2692,12 +2908,25 @@ export default function Dashboard() {
                       );
                     };
 
+                    const visibleIds = [1, 2, 3, 4, 5].filter(id => {
+                      const entry = adTableLinks[id];
+                      return entry?.text && !entry?.Approved;
+                    });
+
+                    if (visibleIds.length === 0) {
+                      return (
+                        <div style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", borderRadius: "var(--radius-lg)", border: "1px dashed var(--border)" }}>
+                          No pending ads to preview.
+                        </div>
+                      );
+                    }
+
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-4" style={{
                         maxWidth: "1100px",
                         margin: "0 auto"
                       }}>
-                        {[1, 2, 3, 4, 5].map(id => (
+                        {visibleIds.map(id => (
                           <div key={id}>
                             {renderCard(id)}
                           </div>
@@ -2705,6 +2934,81 @@ export default function Dashboard() {
                       </div>
                     );
                   })()}
+
+                  {/* ── CUSTOM MEDIA UPLOAD ── */}
+                  <div style={{
+                    marginTop: 32, padding: 24, borderRadius: "var(--radius-lg)",
+                    background: "var(--surface)", border: "2px dashed #000",
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12
+                  }}>
+                    <SectionTitle style={{ marginBottom: 4, fontSize: 16 }}>Or Upload Your Own Media</SectionTitle>
+                    <div style={{ fontSize: 12, color: "var(--text-dim)", textAlign: "center", maxWidth: 400 }}>
+                      Skip the AI generation and upload your own video or image. It will go directly to the Approved section.
+                    </div>
+
+                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                      <label style={{
+                        padding: "10px 20px", borderRadius: "var(--radius-md)",
+                        background: "var(--card-bg)", border: "1px solid var(--border)",
+                        color: "var(--text)", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 8, transition: "all 0.15s",
+                        opacity: customUploadLoading ? 0.6 : 1
+                      }}>
+                        {customUploadLoading ? (
+                          <><Spinner size={14} color="var(--primary)" /> Uploading...</>
+                        ) : (
+                          <><span>+</span> Choose File to Upload</>
+                        )}
+                        <input
+                          type="file"
+                          accept="video/*,image/*"
+                          style={{ display: "none" }}
+                          disabled={customUploadLoading}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            setCustomUploadLoading(true);
+                            setCustomUploadError("");
+
+                            try {
+                              const timestamp = new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(',', '').replace(/\//g, '-').replace(' ', '_').replace(':', '-').replace(' pm', 'PM').replace(' am', 'AM');
+                              const ext = file.name.split('.').pop();
+                              const randomId = Math.floor(Math.random() * 10000);
+                              const fileName = `${timestamp}_${randomId}.${ext}`;
+
+                              const { data, error } = await supabase.storage.from("AD1").upload(fileName, file);
+                              if (error) throw error;
+
+                              const { data: publicUrlData } = supabase.storage.from("AD1").getPublicUrl(fileName);
+                              const publicUrl = publicUrlData.publicUrl;
+
+                              const isVideo = file.type.startsWith("video/");
+                              const newAd = {
+                                id: "MANUAL_" + Math.floor(Math.random() * 10000),
+                                time: new Date().toISOString(),
+                                text: publicUrl,
+                                format: isVideo ? "Video" : "Image",
+                                Approved: true
+                              };
+
+                              setAllApprovedAds(prev => [newAd, ...prev]);
+
+                              try { addSbToast("Media uploaded and approved!", "success"); } catch (err) { }
+                            } catch (err) {
+                              setCustomUploadError(err.message || "Upload failed");
+                              console.error(err);
+                            } finally {
+                              setCustomUploadLoading(false);
+                            }
+                          }}
+                        />
+                      </label>
+                      {customUploadError && (
+                        <div style={{ fontSize: 12, color: "var(--red-error)" }}>{customUploadError}</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -2744,10 +3048,9 @@ export default function Dashboard() {
               description="Go to the 'Create Ad' tab to preview and approve your generated creatives. Once approved, they will appear here for final launch."
             />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-5" style={{ maxWidth: "1200px", margin: "0 auto" }}>
-              {[...allApprovedAds]
-                .sort((a, b) => Number(a.id) - Number(b.id))
-                .map((ad) => {
+            <div style={{ display: "flex", flexDirection: "column", gap: 40, maxWidth: "1200px", margin: "0 auto" }}>
+              {(() => {
+                const renderApprovalCard = (ad) => {
                   const isVid = (ad.format || "").toLowerCase() === "video";
                   return (
                     <Card key={`${ad.id}_${ad.time}`} style={{ padding: 12, display: "flex", flexDirection: "column" }}>
@@ -2821,7 +3124,51 @@ export default function Dashboard() {
                       </div>
                     </Card>
                   );
-                })}
+                };
+
+                const approvedVideos = allApprovedAds
+                  .filter(ad => (ad.format || "").toLowerCase() === "video")
+                  .sort((a, b) => new Date(b.time) - new Date(a.time));
+
+                const approvedImages = allApprovedAds
+                  .filter(ad => (ad.format || "").toLowerCase() !== "video")
+                  .sort((a, b) => new Date(b.time) - new Date(a.time));
+
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12" style={{ padding: "0 20px" }}>
+                    {/* Left Column: Videos */}
+                    <div className="flex flex-col gap-4">
+                      <SectionTitle style={{ marginBottom: 8, fontSize: 16 }}>Approved Videos</SectionTitle>
+                      {approvedVideos.length > 0 ? (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          {approvedVideos.map(renderApprovalCard)}
+                        </div>
+                      ) : (
+                        <div style={{ padding: "30px", textAlign: "center", border: "1px dashed var(--border)", borderRadius: "var(--radius-lg)", color: "var(--text-dim)", fontSize: 13 }}>
+                          No videos approved yet.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Images */}
+                    <div className="flex flex-col gap-4 relative">
+                      {/* Vertical separator visible only on large screens */}
+                      <div className="hidden lg:block absolute left-[-24px] top-0 bottom-0 w-[2px] bg-black" style={{ marginLeft: "-1px", borderRadius: "2px", opacity: 1 }}></div>
+
+                      <SectionTitle style={{ marginBottom: 8, fontSize: 16 }}>Approved Images</SectionTitle>
+                      {approvedImages.length > 0 ? (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          {approvedImages.map(renderApprovalCard)}
+                        </div>
+                      ) : (
+                        <div style={{ padding: "30px", textAlign: "center", border: "1px dashed var(--border)", borderRadius: "var(--radius-lg)", color: "var(--text-dim)", fontSize: 13 }}>
+                          No images approved yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -3482,74 +3829,6 @@ export default function Dashboard() {
           <SocialDash />
         </div>
       )}
-
-      {/* ═══════════════════════════════════════════════════════
-          NEWSLETTER — Redirect to dedicated section
-      ═══════════════════════════════════════════════════════ */}
-      {/* ── NEWSLETTER SECTIONS ── */}
-      {tab === "newsletter" && (
-        <NewsletterProviders>
-          <div className="mb-8 px-4 sm:px-0">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
-              <div>
-                <h1 className="text-2xl font-bold text-[var(--text)] mb-2">
-                  {newsletterSubTab === "generate" && "Generate Newsletter"}
-                  {newsletterSubTab === "campaign" && "Newsletter Campaigns"}
-                  {newsletterSubTab === "history" && "Newsletter History"}
-                  {newsletterSubTab === "services" && "Manage Services"}
-                </h1>
-                <p className="text-[var(--text-muted)] text-sm">
-                  {newsletterSubTab === "generate" && "AI-powered clinical content generation for your patient newsletters."}
-                  {newsletterSubTab === "campaign" && "Schedule and send your generated newsletters to your subscribers."}
-                  {newsletterSubTab === "history" && "Access and reuse your previously generated medical newsletters."}
-                  {newsletterSubTab === "services" && "Configure the medical specialties and services for your practice."}
-                </p>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, background: "var(--surface)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
-                {[
-                  { id: "generate", label: "Generate", icon: "📧" },
-                  { id: "campaign", label: "Campaigns", icon: "📬" },
-                  { id: "history", label: "History", icon: "📜" },
-                  { id: "services", label: "Services", icon: "⚙️" },
-                ].map((sub) => (
-                  <button
-                    key={sub.id}
-                    onClick={() => setNewsletterSubTab(sub.id)}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "var(--radius-sm)",
-                      border: "none",
-                      background: newsletterSubTab === sub.id ? "#fff" : "transparent",
-                      color: newsletterSubTab === sub.id ? "var(--primary)" : "var(--text-muted)",
-                      fontWeight: newsletterSubTab === sub.id ? 700 : 500,
-                      fontSize: 12,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      transition: "all 0.2s",
-                      boxShadow: newsletterSubTab === sub.id ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
-                    }}
-                  >
-                    <span>{sub.icon}</span> {sub.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {newsletterSubTab === "generate" && <GenerateNewsletter />}
-          {newsletterSubTab === "campaign" && <CreateCampaign />}
-          {newsletterSubTab === "history" && <NewsletterHistory />}
-          {newsletterSubTab === "services" && <ManageServices />}
-        </NewsletterProviders>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════
-          OUTREACH — Integrated SPA Section
-      ═══════════════════════════════════════════════════════ */}
-      {tab === "outreach" && <OutreachManager />}
 
       {/* ═══════════════════════════════════════════════════════
           AD DETAILS MODAL (POP-UP)

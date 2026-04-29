@@ -260,7 +260,6 @@ export async function POST(request) {
     const ageMin          = ad_set?.age_min            || 18;
     const ageMax          = ad_set?.age_max            || 65;
     const gender          = ad_set?.gender             ?? 0; // 0=all,1=male,2=female
-    const geoCountries    = ad_set?.geo_targeting      || ["US"];
     const dsaBeneficiary  = ad_set?.dsa_beneficiary   || "Advertiser";
     const dsaPayor        = ad_set?.dsa_payor          || "Advertiser";
     const adName          = ad?.name                  || "Ad";
@@ -269,11 +268,39 @@ export async function POST(request) {
     const websiteUrl      = ad?.website_url           || "https://togahh.com";
     const ctaType         = ad?.call_to_action_type   || "LEARN_MORE";
 
+    // Clean geo_locations for Meta API
+    let rawGeo = ad_set?.geo_locations || {
+      countries: ad_set?.geo_targeting || ["US"],
+      location_types: ["home", "recent"],
+    };
+    
+    const cleanGeo = { location_types: rawGeo.location_types || ["home", "recent"] };
+    let hasLocation = false;
+    
+    if (rawGeo.countries && rawGeo.countries.length > 0) { 
+      cleanGeo.countries = rawGeo.countries; 
+      hasLocation = true; 
+    }
+    if (rawGeo.cities && rawGeo.cities.length > 0) { 
+      cleanGeo.cities = rawGeo.cities.map(c => ({ key: String(c.key), radius: 25, distance_unit: "mile" })); 
+      hasLocation = true; 
+    }
+    if (rawGeo.regions && rawGeo.regions.length > 0) { 
+      cleanGeo.regions = rawGeo.regions.map(c => ({ key: String(c.key) })); 
+      hasLocation = true; 
+    }
+    if (rawGeo.zips && rawGeo.zips.length > 0) { 
+      cleanGeo.zips = rawGeo.zips.map(c => ({ key: String(c.key) })); 
+      hasLocation = true; 
+    }
+
+    // Meta API requires at least one valid location targeting
+    if (!hasLocation) {
+      cleanGeo.countries = ["US"];
+    }
+
     const targeting = {
-      geo_locations: {
-        countries: geoCountries,
-        location_types: ["home", "recent"],
-      },
+      geo_locations: cleanGeo,
       age_min: ageMin,
       age_max: ageMax,
       ...(gender !== 0 ? { genders: [gender] } : {}),
