@@ -38,6 +38,8 @@ const TABS = [
 
   { id: "reports", label: "Reports", icon: "◧" },
   { id: "social-dash", label: "Social-Dash", icon: "🎨" },
+  { id: "newsletter", label: "Newsletter", icon: "📰", externalLink: "https://newsletter-dashboard-ecfb.vercel.app/newsletter/generate" },
+  { id: "outreach", label: "Outreach", icon: "✉️", externalLink: "https://togaah-outreach-kc5r-git-main-optiserve.vercel.app" },
 ];
 
 const TOPICS = [
@@ -1271,7 +1273,13 @@ export default function Dashboard() {
           <button
             key={t.id}
             style={tabStyle(t.id)}
-            onClick={() => setTab(t.id)}
+            onClick={() => {
+              if (t.externalLink) {
+                window.open(t.externalLink, "_blank", "noopener,noreferrer");
+              } else {
+                setTab(t.id);
+              }
+            }}
           >
             <span style={{ fontSize: 13, opacity: 0.75 }}>{t.icon}</span>
             <span style={{ whiteSpace: "nowrap" }}>{t.label}</span>
