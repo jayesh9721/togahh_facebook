@@ -10,40 +10,38 @@ import {
   Settings,
   Loader2,
   CheckCircle2,
-  Activity
+  Activity,
+  MessageSquare,
+  RefreshCw
 } from 'lucide-react';
 
-import {
-  Card,
-  Badge,
-  Spinner,
-  PrimaryButton,
-  SecondaryButton,
-  SectionTitle
-} from './components';
-
+import { Badge, Spinner } from './components';
 import { socialSupabase } from '../lib/socialSupabase';
+import GeneratorModal from './GeneratorModal';
+import RetryModal from './RetryModal';
+import './social-dash.css';
+
+const medicalBlue = "#0284c7";
+const medicalTeal = "#0d9488";
 
 export default function SocialDash() {
   const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(null);
   const [toast, setToast] = useState(null);
   const videoRef = useRef(null);
-
-  // Colors
-  const medicalBlue = "#0284c7";
-  const medicalTeal = "#0d9488";
-
-  // Live status from Supabase
   const [status, setStatus] = useState("Connecting...");
+  const [showModal, setShowModal] = useState(false);
+  const [showRetryModal, setShowRetryModal] = useState(false);
+  const [generatedStory, setGeneratedStory] = useState(null);
+  const [lastInputs, setLastInputs] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Initialize video URL and real-time status
+
   useEffect(() => {
     const sampleUrl = "https://cdssxtquayzijmbnlqmt.supabase.co/storage/v1/object/public/n8n/finalbefore2.mp3";
-    const timestamp = Date.now();
-    setVideoUrl(`${sampleUrl}?t=${timestamp}`);
+    setVideoUrl(`${sampleUrl}?t=${Date.now()}`);
 
-    // 1. Fetch initial status from n8n table
     const fetchStatus = async () => {
       try {
         const { data, error } = await socialSupabase
@@ -52,57 +50,97 @@ export default function SocialDash() {
           .order('id', { ascending: false })
           .limit(1);
 
-        if (error) {
-          console.error('Error fetching initial status:', error);
-          setStatus("Status Unavailable");
-        } else if (data && data.length > 0) {
-          setStatus(data[0].status);
-        } else {
-          setStatus("Operational");
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching status:', err);
-        setStatus("Status Error");
-      }
+        if (error) { setStatus("Status Unavailable"); }
+        else if (data && data.length > 0) { setStatus(data[0].status); }
+        else { setStatus("Operational"); }
+      } catch { setStatus("Status Error"); }
     };
 
     fetchStatus();
 
-    // 2. Subscribe to real-time status updates
     const channel = socialSupabase
       .channel('n8n-status-changes')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'n8n' },
-        (payload) => {
-          if (payload.new && payload.new.status) {
-            setStatus(payload.new.status);
-          }
-        }
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'n8n' }, (payload) => {
+        if (payload.new?.status) setStatus(payload.new.status);
+      })
       .subscribe();
 
-    return () => {
-      socialSupabase.removeChannel(channel);
-    };
+    return () => { socialSupabase.removeChannel(channel); };
   }, []);
+
+  // Timer logic for progress bar (max 6 minutes = 360s)
+  useEffect(() => {
+    let interval;
+    if (isGenerating) {
+      const MAX_TIME = 360; // seconds
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 98) {
+            clearInterval(interval);
+            return 98; // Stay at 98% until status changes to success
+          }
+          return prev + (100 / MAX_TIME);
+        });
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+
+  // Monitor status to trigger refresh and progress completion
+  useEffect(() => {
+    if (status === "video created successfully") {
+      setProgress(100);
+      setIsGenerating(false);
+      handleRefreshPreview();
+      showToast("Video created successfully!", "success");
+    } else if (
+      status && 
+      status !== "Operational" && 
+      status !== "Status Unavailable" && 
+      status !== "Status Error" && 
+      status !== "video created successfully" &&
+      status !== "Connecting..."
+    ) {
+      if (!isGenerating) {
+        setIsGenerating(true);
+        setProgress(0);
+      }
+    }
+  }, [status]);
+
+  const handleRefreshPreview = () => {
+    const sampleUrl = "https://cdssxtquayzijmbnlqmt.supabase.co/storage/v1/object/public/n8n/finalbefore2.mp3";
+    setVideoUrl(`${sampleUrl}?t=${Date.now()}`);
+  };
+
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const triggerWebhook = async (url, label, successMessage) => {
+  const triggerWebhook = async (url, label, successMessage, body = null) => {
     setLoading(label);
     try {
-      const response = await fetch(url);
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, body }),
+      });
       if (response.ok) {
         showToast(successMessage, 'success');
+        // Safely handle immediate or non-JSON responses
+        const data = await response.json().catch(() => ({ status: 'ok' }));
+        return data;
       } else {
-        showToast(`Trigger failed: ${response.statusText}`, 'info');
+        const errorData = await response.json().catch(() => ({}));
+        showToast(`Trigger failed: ${errorData.error || response.statusText}`, 'info');
+        return null;
       }
-    } catch (error) {
-      console.error("Webhook failed", error);
+    } catch (err) {
+      console.error("Webhook Error:", err);
       showToast("Trigger failed. Check console for details.", 'info');
     } finally {
       setLoading(null);
@@ -110,240 +148,325 @@ export default function SocialDash() {
   };
 
   const handleGenerateImages = () => {
+    setIsGenerating(true);
+    setProgress(0);
+    setStatus("Generating images...");
     triggerWebhook(
       "https://n8n.srv1208919.hstgr.cloud/webhook/1703fb64-ec58-4e56-9ce7-bd9e16e15220",
-      "images",
-      "Images will be generated soon!"
+      "images", "Images will be generated soon!"
     );
   };
+
 
   const handleManualTrigger = () => {
+    setIsGenerating(true);
+    setProgress(0);
+    setStatus("Starting video process...");
     triggerWebhook(
       "https://n8n.srv1208919.hstgr.cloud/webhook/289d4090-ac38-4c90-9876-5ca765e46211",
-      "manual",
-      "Video processing started. Check email!"
+      "manual", "Video processing started. Check email!"
     );
   };
+
 
   const handleDynamicTrigger = () => {
-    window.open("https://n8n.srv1208919.hstgr.cloud/form/9d706a5b-d90f-42a8-8e6b-cf75ac0bf902", "_blank");
-    showToast("Opening configuration form...", "info");
+    setShowModal(true);
   };
 
-  const handlePostVideo = () => {
-    triggerWebhook(
-      "https://n8n.srv1208919.hstgr.cloud/webhook/8f91f8e3-d06f-4e73-a545-e18065750416",
-      "post",
-      "Video posted to social media!"
+  const handleModalSubmit = async (data) => {
+    setShowModal(false);
+    setLastInputs(data);
+    const result = await triggerWebhook(
+      "https://n8n.srv1208919.hstgr.cloud/webhook/7be28969-c4ad-404a-b982-841dda7133af",
+      "dynamic", 
+      "Spotlight Triggered!",
+      data
+    );
+    
+    console.log("Webhook Result:", result);
+
+    const story = Array.isArray(result) 
+      ? (result[0]?.output?.story || result[0]?.story)
+      : (result?.output?.story || result?.story);
+    
+    if (story) {
+      setGeneratedStory(story);
+    }
+  };
+
+  const handleAcceptStory = async () => {
+    setGeneratedStory(null); // Clear immediately as requested
+    setIsGenerating(true);   // Show timeline immediately
+    setProgress(0);
+    setStatus("Initiating workflow...");
+    await triggerWebhook(
+      "https://n8n.srv1208919.hstgr.cloud/webhook/81f0d39d-6344-421a-b3a2-019b2c737483",
+      "accept",
+      "Story accepted and saved!",
+      { ...lastInputs, generated_story: generatedStory, status: "accepted" }
     );
   };
 
+
+
+
+  const handleRetrySubmit = async (retryPrompt) => {
+    setShowRetryModal(false);
+    const data = { ...lastInputs, retry_prompt: retryPrompt, status: "retry", generated_story: generatedStory };
+    
+    const result = await triggerWebhook(
+      "https://n8n.srv1208919.hstgr.cloud/webhook/ddcfb213-9313-46e3-8270-dd603301c1bd",
+      "dynamic", 
+      "Retry Triggered!",
+      data
+    );
+
+    const story = Array.isArray(result) 
+      ? (result[0]?.output?.story || result[0]?.story)
+      : (result?.output?.story || result?.story);
+    
+    if (story) {
+      setGeneratedStory(story);
+    }
+  };
+
+  const handlePostVideo = () => triggerWebhook(
+    "https://n8n.srv1208919.hstgr.cloud/webhook/8f91f8e3-d06f-4e73-a545-e18065750416",
+    "post", "Video posted to social media!"
+  );
+
   return (
-    <div key="social-dash-v4-final" className="flex flex-col gap-8 max-w-6xl mx-auto py-8 text-slate-700 px-4">
-      {/* Toast Notification */}
+    <div className="sd-root">
+
+      {/* ---- Toast ---- */}
       {toast && (
-        <div className="fixed top-6 right-6 z-[100] animate-toast">
-          <div
-            className="px-6 py-4 rounded-xl flex items-center gap-3 bg-white shadow-xl border border-slate-100 border-l-4"
-            style={{ borderLeftColor: medicalBlue }}
-          >
-            {toast.type === 'success' ? (
-              <CheckCircle2 size={20} style={{ color: "var(--green)" }} />
-            ) : (
-              <Activity size={20} style={{ color: medicalBlue }} />
-            )}
-            <p className="font-semibold text-slate-800">{toast.message}</p>
+        <div className="sd-toast">
+          <div className="sd-toast-inner" style={{ borderLeftColor: toast.type === 'success' ? '#22c55e' : medicalBlue }}>
+            {toast.type === 'success'
+              ? <CheckCircle2 size={16} color="#22c55e" />
+              : <Activity size={16} color={medicalBlue} />}
+            {toast.message}
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 mb-4">
+      {/* ---- Header ---- */}
+      <header className="sd-header">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Creator Studio
-          </h1>
-          <p className="text-slate-500 mt-2 text-base sm:text-lg">Manage your social media content generation pipeline</p>
+          <h1 className="sd-header-title">Creator Studio</h1>
+          <p className="sd-header-sub">Manage your social media content generation pipeline</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge
-            text="v2.0 Connected"
-            color={medicalBlue}
-            bg="var(--primary-light)"
-          />
-          <Badge
-            text={status}
-            color="var(--green)"
-            bg="var(--green-light)"
-          />
+        <div className="sd-badge-row">
+          <Badge text="v2.0 Connected" color={medicalBlue} bg="var(--primary-light)" />
+          <Badge text={status} color={status === "video created successfully" ? "var(--green)" : "var(--amber)"} bg={status === "video created successfully" ? "var(--green-light)" : "var(--amber-light)"} />
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Left Column: Controls */}
-        <div className="lg:col-span-12 xl:col-span-5 space-y-10">
 
-          {/* Image Generation Card */}
-          <Card className="hover:border-sky-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
-            <div className="flex items-center gap-4 mb-8">
-              <div
-                className="p-4 rounded-2xl bg-sky-50"
-                style={{ color: medicalBlue }}
-              >
-                <ImageIcon size={32} />
+      {/* ---- Main grid ---- */}
+      <div className="sd-grid">
+
+        {/* ---- Left: Action cards ---- */}
+        <div className="sd-left">
+
+          {/* Social Image Creator */}
+          <div className="sd-action-card sd-action-card-sky">
+            <div className="sd-card-head">
+              <div className="sd-card-icon sd-card-icon-sky">
+                <ImageIcon size={20} />
               </div>
-              <h2 className="text-2xl font-bold text-slate-800">Social Image Creator</h2>
+              <h2 className="sd-card-title">Social Image Creator</h2>
             </div>
-
-            <div className="p-7 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-white hover:shadow-sm transition-all">
-              <p className="text-slate-500 mb-8 text-sm leading-relaxed">
-                Create professional social media visuals. Assets are automatically scaled for Instagram, Facebook, and LinkedIn.
+            <div className="sd-card-inner">
+              <div className="sd-card-inner-head">
+                <span className="sd-card-inner-label">Auto-Scale</span>
+                <Badge text="Instagram · FB · LI" color={medicalBlue} bg="var(--primary-light)" />
+              </div>
+              <p className="sd-card-inner-desc">
+                Create professional visuals automatically scaled for all major social channels.
               </p>
-              <PrimaryButton
+              <button
+                className="sd-btn-primary"
                 onClick={handleGenerateImages}
                 disabled={loading === 'images'}
-                style={{ background: medicalBlue, padding: "14px" }}
+                style={{ background: medicalBlue }}
               >
-                {loading === 'images' ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Spinner size={16} color="white" /> Processing...
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <Zap size={16} />
-                    Generate Social Images
-                  </div>
-                )}
-              </PrimaryButton>
+                {loading === 'images'
+                  ? <><Spinner size={14} color="white" /> Processing...</>
+                  : <><Zap size={14} /> Generate Social Images</>}
+              </button>
             </div>
-          </Card>
+          </div>
 
-          {/* Automated Video Card */}
-          <Card className="hover:border-teal-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
-            <div className="flex items-center gap-4 mb-8">
-              <div
-                className="p-4 rounded-2xl bg-teal-50"
-                style={{ color: medicalTeal }}
-              >
-                <Clapperboard size={32} />
+
+          {/* Custom Spotlight */}
+          <div className="sd-action-card sd-action-card-amber">
+            <div className="sd-card-head">
+              <div className="sd-card-icon sd-card-icon-amber">
+                <Settings size={20} />
               </div>
-              <h2 className="text-2xl font-bold text-slate-800">Automated Reels</h2>
+              <h2 className="sd-card-title">Custom Spotlight</h2>
             </div>
-
-            <div className="p-7 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-white hover:shadow-sm transition-all">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">AI Generation</h3>
-                <Badge text="Fast" color="var(--blue)" bg="var(--blue-light)" />
-              </div>
-              <p className="text-sm text-slate-500 mb-6 leading-relaxed">Transform blog posts and patient stories into engaging vertical videos for social channels.</p>
-              <SecondaryButton
-                onClick={handleManualTrigger}
-                disabled={loading === 'manual'}
-                style={{ padding: "12px" }}
-              >
-                {loading === 'manual' ? (
-                  <Spinner size={14} />
-                ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <Play size={14} fill="currentColor" /> Launch Video AI
-                  </div>
-                )}
-              </SecondaryButton>
-            </div>
-          </Card>
-
-          {/* Manual Input Card */}
-          <Card className="hover:border-amber-200 transition-all" style={{ padding: "var(--card-padding, 40px)" }}>
-            <div className="flex items-center gap-4 mb-8">
-              <div
-                className="p-4 rounded-2xl bg-amber-50"
-                style={{ color: "var(--amber)" }}
-              >
-                <Settings size={32} />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-800">Custom Spotlight</h2>
-            </div>
-
-            <div className="p-7 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-white hover:shadow-sm transition-all">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">Manual Control</h3>
+            <div className="sd-card-inner">
+              <div className="sd-card-inner-head">
+                <span className="sd-card-inner-label">Manual Control</span>
                 <Badge text="Custom" color="var(--amber)" bg="var(--amber-light)" />
               </div>
-              <p className="text-sm text-slate-500 mb-6 leading-relaxed">Manually input custom scripts, tones, and visual scenes for total creative control.</p>
-              <SecondaryButton
+              <p className="sd-card-inner-desc">
+                Input custom scripts, tones, and visual scenes for total creative control.
+              </p>
+              <button
+                className="sd-btn-secondary"
                 onClick={handleDynamicTrigger}
                 disabled={loading === 'dynamic'}
-                style={{ padding: "12px" }}
               >
-                <div className="flex items-center justify-center gap-2 text-slate-600">
-                  <Settings size={16} /> Dynamic Inputs
-                </div>
-              </SecondaryButton>
+                {loading === 'dynamic'
+                  ? <><Spinner size={14} /> Processing...</>
+                  : <><Settings size={14} /> Dynamic Inputs</>}
+              </button>
             </div>
-          </Card>
+          </div>
+
+          {/* ---- Generation Progress Timeline ---- */}
+          {isGenerating && (
+            <div className="sd-action-card sd-action-card-success animate-fade-in">
+              <div className="sd-card-head">
+                <div className="sd-card-icon" style={{ background: '#f0fdfa', color: '#0d9488' }}>
+                  <Zap size={20} />
+                </div>
+                <h2 className="sd-card-title">Generation in Progress</h2>
+              </div>
+              <div className="sd-card-inner">
+                <div className="sd-timeline-header">
+                  <span className="sd-timeline-label">Progress</span>
+                  <span className="sd-timeline-value">{Math.round(progress)}%</span>
+                </div>
+                <div className="sd-timeline-bar">
+                  <div className="sd-timeline-progress" style={{ width: `${progress}%` }} />
+                </div>
+                <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>
+                  System is currently processing your request. The preview will update automatically.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Generated Story Output */}
+
+          {generatedStory && (
+            <div className="sd-action-card sd-action-card-success animate-fade-in">
+              <div className="sd-card-head">
+                <div className="sd-card-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
+                  <MessageSquare size={20} />
+                </div>
+                <h2 className="sd-card-title">Generated Story</h2>
+              </div>
+              <div className="sd-card-inner" style={{ background: '#ffffff', border: '1px solid #dcfce7' }}>
+                <div className="sd-generated-text">
+                  {loading === 'dynamic' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#64748b' }}>
+                      <Spinner size={16} /> Generating new story...
+                    </div>
+                  ) : generatedStory}
+                </div>
+                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                  <button 
+                    className="sd-btn-secondary" 
+                    style={{ width: 'auto', fontSize: 12, padding: '8px 16px', background: '#f8fafc', color: '#1e293b' }}
+                    onClick={() => setShowRetryModal(true)}
+                  >
+                    <RefreshCw size={14} /> Retry
+                  </button>
+                  <button 
+                    className="sd-btn-primary" 
+                    style={{ width: 'auto', fontSize: 12, padding: '8px 20px', background: '#16a34a' }}
+                    onClick={handleAcceptStory}
+                    disabled={loading === 'accept'}
+                  >
+                    {loading === 'accept' 
+                      ? <><Spinner size={14} color="white" /> Processing...</> 
+                      : <><CheckCircle2 size={14} /> Accept Story</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
-        {/* Right Column: Preview */}
-        <div className="lg:col-span-12 xl:col-span-7 flex flex-col h-full">
-          <Card className="flex-grow flex flex-col h-full min-h-[50px] p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-bottom border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <SectionTitle style={{ marginBottom: 0 }}>System Preview Output</SectionTitle>
+        {/* ---- Right: Preview panel ---- */}
+        <div className="sd-right">
+          <div className="sd-preview-panel">
+
+            {/* Panel header */}
+            <div className="sd-preview-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="sd-live-dot" />
+                <span className="sd-preview-label">System Preview Output</span>
               </div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Live Feed</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button 
+                  className="sd-btn-refresh-small" 
+                  onClick={handleRefreshPreview}
+                  title="Refresh Preview"
+                >
+                  <RefreshCw size={14} />
+                </button>
+                <span className="sd-live-tag">Live Feed</span>
+              </div>
             </div>
 
-            <div className="flex-grow bg-slate-900 relative group min-h-[350px] lg:min-h-[500px]">
+
+            {/* Video area */}
+            <div className="sd-video-area">
               {videoUrl ? (
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  controls
-                  className="w-full h-full object-contain"
-                >
+                <video ref={videoRef} src={videoUrl} controls>
                   Your browser does not support the video tag.
                 </video>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
-                  <Loader2 size={48} className="animate-spin text-slate-700" />
-                  <p className="text-slate-500 font-medium">Loading preview stream...</p>
+                <div className="sd-video-placeholder">
+                  <Loader2 size={36} color="#334155" style={{ animation: 'spin 1s linear infinite' }} />
+                  <p style={{ color: '#475569', fontSize: 13, fontWeight: 500 }}>Loading preview stream...</p>
                 </div>
               )}
             </div>
 
-            <div className="p-6 lg:p-10 bg-slate-50 border-t border-slate-100">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
-                <div className="text-center sm:text-left">
-                  <h3 className="font-extrabold text-xl text-slate-800">Final Creative Approval</h3>
-                  <p className="text-sm text-slate-500 mt-1">Ready to push this content to your active social channels?</p>
-                </div>
-                <div className="w-full sm:w-auto">
-                  <PrimaryButton
-                    onClick={handlePostVideo}
-                    disabled={loading === 'post'}
-                    style={{
-                      padding: "16px 36px",
-                      fontSize: 15,
-                      borderRadius: "12px",
-                      background: `linear-gradient(135deg, ${medicalBlue}, ${medicalTeal})`
-                    }}
-                  >
-                    {loading === 'post' ? (
-                      <Spinner color="white" />
-                    ) : (
-                      <div className="flex items-center justify-center gap-2">
-                        <Share2 size={20} />
-                        Post Now
-                      </div>
-                    )}
-                  </PrimaryButton>
-                </div>
+            {/* Approval bar */}
+            <div className="sd-approval-bar">
+              <div>
+                <p className="sd-approval-title">Final Creative Approval</p>
+                <p className="sd-approval-sub">Ready to push this content to your active social channels?</p>
               </div>
+              <button
+                className="sd-btn-post"
+                onClick={handlePostVideo}
+                disabled={loading === 'post'}
+                style={{ background: `linear-gradient(135deg, ${medicalBlue}, ${medicalTeal})` }}
+              >
+                {loading === 'post'
+                  ? <Spinner color="white" size={16} />
+                  : <><Share2 size={16} /> Post Now</>}
+              </button>
             </div>
-          </Card>
+
+          </div>
         </div>
+
       </div>
+
+      <GeneratorModal 
+        isOpen={showModal} 
+        onOpenChange={setShowModal} 
+        onSubmit={handleModalSubmit}
+        loading={loading === 'dynamic'}
+      />
+
+      <RetryModal 
+        isOpen={showRetryModal}
+        onOpenChange={setShowRetryModal}
+        onSubmit={handleRetrySubmit}
+        loading={loading === 'dynamic'}
+      />
     </div>
   );
 }
