@@ -52,6 +52,31 @@ const TOPICS = [
   "Patient Care Protocols",
 ];
 
+// ─── HELPERS ─────────────────────────────────────────────────
+/**
+ * Ensures Supabase storage URLs use the current project's hostname.
+ * This fixes issues where n8n or old data might use a different Supabase instance.
+ */
+const normalizeSupabaseUrl = (url) => {
+  if (!url || typeof url !== "string") return url;
+  const currentUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  if (!currentUrl) return url;
+  
+  const currentHostname = currentUrl.replace(/^https?:\/\//, "");
+  
+  if (url.includes(".supabase.co/storage/v1/object/")) {
+    if (!url.includes(currentHostname)) {
+      const parts = url.split(".supabase.co/");
+      if (parts.length === 2) {
+        const newUrl = `${currentUrl}/storage/v1/object/${parts[1].split("/object/")[1] || parts[1]}`;
+        console.log(`[URL Fix] Normalizing hostname: ${url} -> ${newUrl}`);
+        return newUrl;
+      }
+    }
+  }
+  return url;
+};
+
 // ─── MAIN DASHBOARD ──────────────────────────────────────────
 export default function Dashboard() {
   const router = useRouter();
@@ -183,22 +208,25 @@ export default function Dashboard() {
   const fetchAdTableLinks = useCallback(async () => {
     setAdVideosLoading(true);
     const { data, error } = await supabase
-      .from("your_table_name")
+      .from("your_name_table")
       .select("id, text, time, format, Approved, \"json data\"")
       .order("time", { ascending: false });
 
     if (error) {
-      console.error("Ad links error:", error);
+      if (error.code !== "PGRST116") { // Ignore table not found error toast on first load
+        console.error("Ad links error:", error);
+      }
     } else {
       const latest = {};
       const approvedList = [];
       (data || []).forEach(row => {
-        const isUrl = String(row.text || "").startsWith("http");
+        const normalizedText = normalizeSupabaseUrl(row.text);
+        const isUrl = String(normalizedText || "").startsWith("http");
         if (!latest[row.id] && isUrl) {
-          latest[row.id] = row;
+          latest[row.id] = { ...row, text: normalizedText };
         }
         if (row.Approved && isUrl) {
-          approvedList.push(row);
+          approvedList.push({ ...row, text: normalizedText });
         }
       });
       setAdTableLinks(latest);
@@ -514,12 +542,20 @@ export default function Dashboard() {
         }
 
         if (data) {
-          setWorkflowStatus(data.status);
-          // If the status is "Completed", refresh the ad previews and stop polling
-          if (data.status === "Completed") {
+          const newStatus = data.status || "";
+          setWorkflowStatus(newStatus);
+          
+          // Refresh if any part of the workflow completed or if overall completion reached
+          const isIntermediateDone = newStatus.toLowerCase().includes("completed") && !workflowStatus?.toLowerCase().includes("completed");
+          const isFullyDone = newStatus === "Completed";
+
+          if (isIntermediateDone || isFullyDone) {
+            fetchAdTableLinks(); // Refresh the grid
+          }
+
+          if (isFullyDone) {
             setIsStatusPolling(false);
             setAdStatus("idle");
-            fetchAdTableLinks(); // Refresh the grid
             addSbToast("Ads generation completed!", "success");
           }
         }
@@ -666,7 +702,7 @@ export default function Dashboard() {
     if (!row) return;
     setApprovingId(row.id + "_" + row.time);
     const { error } = await supabase
-      .from("your_table_name")
+      .from("your_name_table")
       .update({ Approved: true })
       .match({ id: row.id, time: row.time });
 
@@ -702,7 +738,7 @@ export default function Dashboard() {
     };
 
     const { error } = await supabase
-      .from("your_table_name")
+      .from("your_name_table")
       .update({ "json data": JSON.stringify(updatedJsonData) })
       .match({ id: ad.id, time: ad.time });
 
@@ -2682,63 +2718,61 @@ export default function Dashboard() {
                             if (!workflowStatus || workflowStatus === "waiting") return null;
 
                             return (
-                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 16 }}>
-                                {showImage && (
-                                  <div>
-                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", fontWeight: 600, marginBottom: 6 }}>
-                                      <span>{imgDone ? "Image Generation Completed" : "Generating Image (~1:30)"}</span>
-                                      <span>{imgDone ? "100%" : ""}</span>
-                                    </div>
-                                    <div style={{ position: "relative", height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
-                                      <style>{`
-                                        @keyframes fillImageGen {
-                                          0% { width: 0%; }
-                                          80% { width: 90%; }
-                                          100% { width: 98%; }
-                                        }
-                                      `}</style>
-                                      <div
-                                        style={{
-                                          position: "absolute", top: 0, left: 0, height: "100%",
-                                          background: imgDone ? "var(--green)" : "var(--primary)",
-                                          borderRadius: 3,
-                                          width: imgDone ? "100%" : "0%",
-                                          animation: !imgDone ? "fillImageGen 90s cubic-bezier(0.1, 0.7, 0.1, 1) forwards" : "none",
-                                          transition: "width 0.5s ease-out, background 0.5s"
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
+                                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 16 }}>
+                                    {showImage && (
+                                      <div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", fontWeight: 600, marginBottom: 6 }}>
+                                          <span>{imgDone ? "Image Generation Completed" : "Generating Image (~1:30)"}</span>
+                                          <span>{imgDone ? "100%" : ""}</span>
+                                        </div>
+                                        <div style={{ position: "relative", height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                                          <style>{`
+                                            @keyframes fillImageGen {
+                                              0% { width: 0%; }
+                                              100% { width: 98%; }
+                                            }
+                                          `}</style>
+                                          <div
+                                            style={{
+                                              position: "absolute", top: 0, left: 0, height: "100%",
+                                              background: imgDone ? "var(--green)" : "var(--primary)",
+                                              borderRadius: 3,
+                                              width: imgDone ? "100%" : "0%",
+                                              animation: !imgDone ? "fillImageGen 90s linear forwards" : "none",
+                                              transition: "width 0.5s ease-out, background 0.5s"
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
 
-                                {showVideo && (
-                                  <div>
-                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", fontWeight: 600, marginBottom: 6 }}>
-                                      <span>{vidDone ? "Video Generation Completed" : "Generating Video (~10:00)"}</span>
-                                      <span>{vidDone ? "100%" : ""}</span>
-                                    </div>
-                                    <div style={{ position: "relative", height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
-                                      <style>{`
-                                        @keyframes fillVideoGen {
-                                          0% { width: 0%; }
-                                          80% { width: 90%; }
-                                          100% { width: 98%; }
-                                        }
-                                      `}</style>
-                                      <div
-                                        style={{
-                                          position: "absolute", top: 0, left: 0, height: "100%",
-                                          background: vidDone ? "var(--green)" : "var(--primary)",
-                                          borderRadius: 3,
-                                          width: vidDone ? "100%" : "0%",
-                                          animation: !vidDone ? "fillVideoGen 600s cubic-bezier(0.1, 0.7, 0.1, 1) forwards" : "none",
-                                          transition: "width 0.5s ease-out, background 0.5s"
-                                        }}
-                                      />
-                                    </div>
+                                    {showVideo && (
+                                      <div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", fontWeight: 600, marginBottom: 6 }}>
+                                          <span>{vidDone ? "Video Generation Completed" : "Generating Video (~10:00)"}</span>
+                                          <span>{vidDone ? "100%" : ""}</span>
+                                        </div>
+                                        <div style={{ position: "relative", height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                                          <style>{`
+                                            @keyframes fillVideoGen {
+                                              0% { width: 0%; }
+                                              100% { width: 98%; }
+                                            }
+                                          `}</style>
+                                          <div
+                                            style={{
+                                              position: "absolute", top: 0, left: 0, height: "100%",
+                                              background: vidDone ? "var(--green)" : "var(--primary)",
+                                              borderRadius: 3,
+                                              width: vidDone ? "100%" : "0%",
+                                              animation: !vidDone ? "fillVideoGen 600s linear forwards" : "none",
+                                              transition: "width 0.5s ease-out, background 0.5s"
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
                             );
                           })()}
                         </div>

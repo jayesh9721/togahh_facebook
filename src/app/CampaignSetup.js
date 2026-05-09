@@ -9,6 +9,28 @@ import {
   PrimaryButton,
 } from "./components";
 
+// ─── HELPERS ─────────────────────────────────────────────────
+/**
+ * Ensures Supabase storage URLs use the current project's hostname.
+ */
+const normalizeSupabaseUrl = (url) => {
+  if (!url || typeof url !== "string") return url;
+  const currentUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  if (!currentUrl) return url;
+  
+  const currentHostname = currentUrl.replace(/^https?:\/\//, "");
+  
+  if (url.includes(".supabase.co/storage/v1/object/")) {
+    if (!url.includes(currentHostname)) {
+      const parts = url.split(".supabase.co/");
+      if (parts.length === 2) {
+        return `${currentUrl}/storage/v1/object/${parts[1].split("/object/")[1] || parts[1]}`;
+      }
+    }
+  }
+  return url;
+};
+
 // ─── DEFAULT SCHEMA ────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG = {
   campaign: {
@@ -62,8 +84,7 @@ const DEFAULT_CONFIG = {
     facebook_page: "HealPoint Health Center",
     instagram_account: "healpoint_medical",
   },
-  link_data:
-    "https://nidoqmcxmlyiovdktzxg.supabase.co/storage/v1/object/AD1/08-04-2026_11-55AM.mp4",
+  link_data: normalizeSupabaseUrl("https://nidoqmcxmlyiovdktzxg.supabase.co/storage/v1/object/AD1/08-04-2026_11-55AM.mp4"),
 };
 
 // ─── CONSTANTS ─────────────────────────────────────────────────────────────────
