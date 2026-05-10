@@ -18,18 +18,22 @@ const normalizeSupabaseUrl = (url) => {
   const currentUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   if (!currentUrl) return url;
   
-  const currentHostname = currentUrl.replace(/^https?:\/\//, "");
-  
-  if (url.includes(".supabase.co/storage/v1/object/")) {
-    if (!url.includes(currentHostname)) {
-      const parts = url.split(".supabase.co/");
-      if (parts.length === 2) {
-        return `${currentUrl}/storage/v1/object/${parts[1].split("/object/")[1] || parts[1]}`;
-      }
-    }
+  if (url.includes("/storage/v1/object/")) {
+    const parts = url.split("/object/");
+    if (parts.length < 2) return url;
+    
+    const pathParts = parts[1].replace(/^(public\/|authenticated\/)/, "").split("/");
+    const bucket = pathParts[0];
+    const filename = pathParts.slice(1).join("/");
+    
+    if (!bucket || !filename) return url;
+    
+    return `${currentUrl}/storage/v1/object/public/${bucket}/${filename}`;
   }
   return url;
 };
+
+
 
 // ─── DEFAULT SCHEMA ────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG = {
@@ -285,13 +289,25 @@ export default function CampaignSetup({ onSelect, selectedId, selectedAd }) {
         setLaunchSuccess(true);
         await fetchCampaigns();
       } else {
-        setLaunchError(data.error || "Launch failed");
+        let errMsg = data.error || "Launch failed";
+        if (errMsg.includes("1885760")) {
+          errMsg = "Goal Mismatch: The selected campaign uses a different Optimization Goal. Tip: Click 'Reset Selection' to launch as a New Pathway, or match the existing campaign's goal.";
+        }
+        setLaunchError(errMsg);
         setLaunchStep(0);
       }
+
     } catch (e) {
-      setLaunchError(e.message);
+      let friendlyMsg = e.message;
+      if (friendlyMsg.includes("1885760")) {
+        friendlyMsg = "Goal Mismatch: The selected campaign uses a different Optimization Goal. Tip: Click 'Reset Selection' to launch as a New Pathway, or match the existing campaign's goal.";
+      } else if (friendlyMsg.includes("100")) {
+        friendlyMsg = "Invalid Parameter: Please check your budget or targeting settings.";
+      }
+      setLaunchError(friendlyMsg);
       setLaunchStep(0);
     } finally {
+
       setLaunching(false);
     }
   };

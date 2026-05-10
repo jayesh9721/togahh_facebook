@@ -62,20 +62,30 @@ const normalizeSupabaseUrl = (url) => {
   const currentUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   if (!currentUrl) return url;
   
-  const currentHostname = currentUrl.replace(/^https?:\/\//, "");
-  
-  if (url.includes(".supabase.co/storage/v1/object/")) {
-    if (!url.includes(currentHostname)) {
-      const parts = url.split(".supabase.co/");
-      if (parts.length === 2) {
-        const newUrl = `${currentUrl}/storage/v1/object/${parts[1].split("/object/")[1] || parts[1]}`;
-        console.log(`[URL Fix] Normalizing hostname: ${url} -> ${newUrl}`);
-        return newUrl;
-      }
+  // If it's a Supabase storage URL
+  if (url.includes("/storage/v1/object/")) {
+    // Extract filename and bucket
+    const parts = url.split("/object/");
+    if (parts.length < 2) return url;
+    
+    const pathParts = parts[1].replace(/^(public\/|authenticated\/)/, "").split("/");
+    const bucket = pathParts[0];
+    const filename = pathParts.slice(1).join("/");
+    
+    if (!bucket || !filename) return url;
+    
+    // Reconstruct strictly using current credentials
+    const newUrl = `${currentUrl}/storage/v1/object/public/${bucket}/${filename}`;
+    
+    if (url !== newUrl) {
+      console.log(`[Strict URL Fix] ${url} -> ${newUrl}`);
     }
+    return newUrl;
   }
   return url;
 };
+
+
 
 // ─── MAIN DASHBOARD ──────────────────────────────────────────
 export default function Dashboard() {
@@ -86,9 +96,15 @@ export default function Dashboard() {
   const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   // Analysis
+  useEffect(() => {
+    console.log("[Diagnostics] Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+  }, []);
+
+  // Analysis state
   const [analysisStatus, setAnalysisStatus] = useState("idle");
   // idle | generating | waiting | done | error
   const [analysisData, setAnalysisData] = useState(null);
+
   const [analysisError, setAnalysisError] = useState("");
   const [pendingAnalysisTopic, setPendingAnalysisTopic] = useState(null);
 
@@ -155,7 +171,9 @@ export default function Dashboard() {
     ]
   });
   const [createTabConfigOpen, setCreateTabConfigOpen] = useState(false);
-  const [adTableLinks, setAdTableLinks] = useState({}); // Stores { "1": { text: "...", format: "Video", Approved: bool }, ... }
+  const [pendingAds, setPendingAds] = useState([]);
+  const [adTableLinks, setAdTableLinks] = useState({});
+ // Stores { "1": { text: "...", format: "Video", Approved: bool }, ... }
   const [allApprovedAds, setAllApprovedAds] = useState([]);
   const [approvingId, setApprovingId] = useState(null);
   const [selectedAdForDetails, setSelectedAdForDetails] = useState(null);
@@ -207,34 +225,95 @@ export default function Dashboard() {
 
   const fetchAdTableLinks = useCallback(async () => {
     setAdVideosLoading(true);
-    const { data, error } = await supabase
+    
+    // 1. Fetch from Storage (Global Lookup)
+    // We create a map of filename -> storage info to verify existence and fix bucket mismatches
+    const storageLookup = new Map(); 
+    try {
+      const buckets = ["AD1", "AD2", "AD3", "AD4", "AD5"];
+      for (const bucket of buckets) {
+        const { data: files } = await supabase.storage.from(bucket).list('', { limit: 100 });
+        if (files && files.length > 0) {
+          files.forEach(file => {
+            if (file.name === ".emptyFolderPlaceholder") return;
+            // Map filename to the first bucket we find it in (or prioritize later buckets if needed)
+            storageLookup.set(file.name, {
+              bucket,
+              time: file.created_at,
+              publicUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${file.name}`
+            });
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Storage sync failed:", e);
+    }
+
+    // 2. Fetch from Database
+    const { data: dbData, error: dbError } = await supabase
       .from("your_name_table")
       .select("id, text, time, format, Approved, \"json data\"")
       .order("time", { ascending: false });
 
-    if (error) {
-      if (error.code !== "PGRST116") { // Ignore table not found error toast on first load
-        console.error("Ad links error:", error);
-      }
-    } else {
-      const latest = {};
-      const approvedList = [];
-      (data || []).forEach(row => {
-        const normalizedText = normalizeSupabaseUrl(row.text);
-        const isUrl = String(normalizedText || "").startsWith("http");
-        if (!latest[row.id] && isUrl) {
-          latest[row.id] = { ...row, text: normalizedText };
-        }
-        if (row.Approved && isUrl) {
-          approvedList.push({ ...row, text: normalizedText });
-        }
-      });
-      setAdTableLinks(latest);
-      setAllApprovedAds(approvedList);
+    if (dbError && dbError.code !== "PGRST116") {
+      console.error("Database fetch error:", dbError);
     }
+
+    const latest = {};
+    const approvedList = [];
+    const validPending = [];
+
+    console.log(`[Diagnostics] DB rows found: ${dbData?.length || 0}`);
+    console.log(`[Diagnostics] Storage lookup size: ${storageLookup.size}`);
+
+    // Process DB data
+    (dbData || []).forEach(row => {
+      const normalizedText = normalizeSupabaseUrl(row.text);
+      if (!normalizedText) return;
+
+      const fileName = normalizedText.split("/").pop();
+      const storageInfo = storageLookup.get(fileName);
+
+      // We prioritize the database record. If storageLookup found it, we use the storage URL.
+      // If storageLookup is empty (e.g. due to list permissions), we still show the ad using the normalized URL.
+      const finalUrl = storageInfo ? storageInfo.publicUrl : normalizedText;
+      const entry = { ...row, originalText: row.text, text: finalUrl };
+
+      if (row.Approved && row.Approved !== "false") {
+        approvedList.push(entry);
+      } else {
+        validPending.push(entry);
+        if (!latest[row.id]) {
+          latest[row.id] = entry;
+        }
+      }
+      
+      if (!storageInfo && storageLookup.size > 0) {
+        console.warn(`[Diagnostics] File not detected in storage list, but showing from DB: ${fileName}`);
+      }
+    });
+
+
+    console.log(`[Diagnostics] Valid pending found: ${validPending.length}`);
+    console.log(`[Diagnostics] Approved found: ${approvedList.length}`);
+
+    // Select top 3 videos and top 2 images for the Create Ad tab
+    const topVideos = validPending.filter(a => (a.format || "").toLowerCase() === "video").slice(0, 3);
+    const topImages = validPending.filter(a => (a.format || "").toLowerCase() !== "video").slice(0, 2);
+    
+    console.log(`[Diagnostics] Top Videos: ${topVideos.length}, Top Images: ${topImages.length}`);
+    setPendingAds([...topVideos, ...topImages]);
+
+    setAdTableLinks(latest);
+    setAllApprovedAds(approvedList);
+
+
     setAdVideosLoading(false);
     setAdVideosRefreshKey(Date.now());
   }, [addSbToast]);
+
+
+
 
   const fetchLiveCampaigns = useCallback(async () => {
     setLiveLoading(true);
@@ -701,20 +780,42 @@ export default function Dashboard() {
   async function handleApproveAd(row) {
     if (!row) return;
     setApprovingId(row.id + "_" + row.time);
-    const { error } = await supabase
-      .from("your_name_table")
-      .update({ Approved: true })
-      .match({ id: row.id, time: row.time });
+
+    let error;
+    if (row.isVirtual) {
+      // This is a virtual entry from Storage Sync. We need to create a real record in the database.
+      const { error: insError } = await supabase
+        .from("your_name_table")
+        .insert([{
+          id: row.id,
+          text: row.text,
+          time: row.time,
+          format: row.format,
+          Approved: "true"
+        }]);
+      error = insError;
+    } else {
+      // RLS is now disabled, so we can use the client directly
+      const { error: updError } = await supabase
+        .from("your_name_table")
+        .update({ Approved: "true" })
+        .eq("text", row.originalText || row.text); 
+      error = updError;
+    }
 
     if (error) {
       console.error("Approval error:", error);
-      addSbToast("Failed to approve ad", "error");
+      addSbToast(`Approval failed: ${error.message || 'Unknown error'}`, "error");
     } else {
       addSbToast("Ad approved successfully!");
       await fetchAdTableLinks();
     }
+
+
+
     setApprovingId(null);
   }
+
 
   async function handleSaveEdits(ad) {
     if (!ad) return;
@@ -2856,126 +2957,120 @@ export default function Dashboard() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   {/* HELPER FOR RENDERING CARDS */}
                   {(() => {
-                    const renderCard = (id) => {
-                      const latestEntry = adTableLinks[id];
+                    const renderCard = (latestEntry) => {
                       const url = latestEntry?.text || "";
                       const isVideo = (latestEntry?.format || "").toLowerCase() === "video";
-                      let label = `Ad ${id}`;
-                      if (id === 4) label = "Ad 4 (Image 1)";
-                      if (id === 5) label = "Ad 5 (Image 2)";
 
-                      return (
-                        <Card key={id} style={{ padding: 12, height: "100%" }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                            {label}
-                          </div>
-                          <div style={{
-                            background: "#000",
-                            borderRadius: "var(--radius-md)",
-                            aspectRatio: "9/16",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            overflow: "hidden",
-                            boxShadow: "inset 0 0 40px rgba(0,0,0,0.5)"
-                          }}>
-                            {latestEntry?.Approved ? (
-                              <div style={{ fontSize: 13, color: "#fff", fontWeight: 700, textAlign: "center", padding: 20 }}>
-                                NO data to preview
-                              </div>
-                            ) : !url ? (
-                              <div style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", padding: 10 }}>
-                                Waiting for {label} link...
-                              </div>
-                            ) : isVideo ? (
-                              <video
-                                key={url}
-                                src={url}
-                                controls
-                                autoPlay={false}
-                                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                              />
-                            ) : (
-                              <img
-                                key={url}
-                                src={url}
-                                alt={label}
-                                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                              />
-                            )}
-                          </div>
+                        const id = latestEntry?.id || "Unknown";
+                        let label = isVideo ? `Video Ad ${id}` : `Image Ad ${id}`;
 
-                          {url && !latestEntry?.Approved && (
-                            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                              <button
-                                onClick={() => setSelectedAdForDetails(latestEntry)}
-                                style={{
-                                  flex: 1, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center",
-                                  gap: 6, padding: "8px 0", borderRadius: "var(--radius-md)",
-                                  border: "1px solid var(--border)", background: "var(--surface)",
-                                  color: "var(--text)", fontSize: 11, fontWeight: 600, transition: "all 0.15s",
-                                  cursor: "pointer", fontFamily: "inherit"
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-hover)"}
-                                onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface)"}
-                              >
-                                ↗ Full View
-                              </button>
-                              <button
-                                onClick={() => handleApproveAd(latestEntry)}
-                                disabled={latestEntry?.Approved || approvingId === (latestEntry?.id + "_" + latestEntry?.time)}
-                                style={{
-                                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-                                  gap: 6, padding: "8px 0", borderRadius: "var(--radius-md)",
-                                  border: "none",
-                                  background: latestEntry?.Approved ? "var(--green-light)" : "var(--primary)",
-                                  color: latestEntry?.Approved ? "var(--green)" : "#fff",
-                                  fontSize: 11, fontWeight: 600,
-                                  cursor: latestEntry?.Approved ? "default" : "pointer",
-                                  opacity: approvingId === (latestEntry?.id + "_" + latestEntry?.time) ? 0.7 : 1,
-                                  transition: "all 0.15s"
-                                }}
-                              >
-                                {approvingId === (latestEntry?.id + "_" + latestEntry?.time) ? (
-                                  <Spinner size={10} />
-                                ) : latestEntry?.Approved ? (
-                                  "✓ Approved"
-                                ) : (
-                                  "✓ Approve"
-                                )}
-                              </button>
+                        return (
+                          <Card key={latestEntry?.id + "_" + latestEntry?.time} style={{ padding: 12, height: "100%" }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                              {label}
                             </div>
-                          )}
-                        </Card>
-                      );
-                    };
+                            <div style={{
+                              background: "#000",
+                              borderRadius: "var(--radius-md)",
+                              aspectRatio: "9/16",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              overflow: "hidden",
+                              boxShadow: "inset 0 0 40px rgba(0,0,0,0.5)"
+                            }}>
+                              {latestEntry?.Approved && latestEntry?.Approved !== "false" ? (
+                                <div style={{ fontSize: 13, color: "#fff", fontWeight: 700, textAlign: "center", padding: 20 }}>
+                                  ✓ Approved
+                                </div>
+                              ) : !url ? (
+                                <div style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", padding: 10 }}>
+                                  Waiting for {label} link...
+                                </div>
+                              ) : isVideo ? (
+                                <video
+                                  key={url}
+                                  src={url}
+                                  controls
+                                  autoPlay={false}
+                                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                                />
+                              ) : (
+                                <img
+                                  key={url}
+                                  src={url}
+                                  alt={label}
+                                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                                />
+                              )}
+                            </div>
 
-                    const visibleIds = [1, 2, 3, 4, 5].filter(id => {
-                      const entry = adTableLinks[id];
-                      return entry?.text && !entry?.Approved;
-                    });
+                            {url && (!latestEntry?.Approved || latestEntry?.Approved === "false") && (
+                              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                                <button
+                                  onClick={() => setSelectedAdForDetails(latestEntry)}
+                                  style={{
+                                    flex: 1, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center",
+                                    gap: 6, padding: "8px 0", borderRadius: "var(--radius-md)",
+                                    border: "1px solid var(--border)", background: "var(--surface)",
+                                    color: "var(--text)", fontSize: 11, fontWeight: 600, transition: "all 0.15s",
+                                    cursor: "pointer", fontFamily: "inherit"
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-hover)"}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface)"}
+                                >
+                                  ↗ Full View
+                                </button>
+                                <button
+                                  onClick={() => handleApproveAd(latestEntry)}
+                                  disabled={latestEntry?.Approved || approvingId === (latestEntry?.id + "_" + latestEntry?.time)}
+                                  style={{
+                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                                    gap: 6, padding: "8px 0", borderRadius: "var(--radius-md)",
+                                    border: "none",
+                                    background: latestEntry?.Approved ? "var(--green-light)" : "var(--primary)",
+                                    color: latestEntry?.Approved ? "var(--green)" : "#fff",
+                                    fontSize: 11, fontWeight: 600,
+                                    cursor: latestEntry?.Approved ? "default" : "pointer",
+                                    opacity: approvingId === (latestEntry?.id + "_" + latestEntry?.time) ? 0.7 : 1,
+                                    transition: "all 0.15s"
+                                  }}
+                                >
+                                  {approvingId === (latestEntry?.id + "_" + latestEntry?.time) ? (
+                                    <Spinner size={10} />
+                                  ) : latestEntry?.Approved ? (
+                                    "✓ Approved"
+                                  ) : (
+                                    "✓ Approve"
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      };
 
-                    if (visibleIds.length === 0) {
+                      if (pendingAds.length === 0) {
+                        return (
+                          <div style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", borderRadius: "var(--radius-lg)", border: "1px dashed var(--border)" }}>
+                            No pending ads to preview.
+                          </div>
+                        );
+                      }
+
                       return (
-                        <div style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", borderRadius: "var(--radius-lg)", border: "1px dashed var(--border)" }}>
-                          No pending ads to preview.
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-4" style={{
+                          maxWidth: "1100px",
+                          margin: "0 auto"
+                        }}>
+                          {pendingAds.map(ad => (
+                            <div key={ad.id + "_" + ad.time}>
+                              {renderCard(ad)}
+                            </div>
+                          ))}
                         </div>
                       );
-                    }
-
-                    return (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 px-0 sm:px-4" style={{
-                        maxWidth: "1100px",
-                        margin: "0 auto"
-                      }}>
-                        {visibleIds.map(id => (
-                          <div key={id}>
-                            {renderCard(id)}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+                    })()}
 
                   {/* ── CUSTOM MEDIA UPLOAD ── */}
                   <div style={{
@@ -3027,14 +3122,29 @@ export default function Dashboard() {
 
                               const isVideo = file.type.startsWith("video/");
                               const newAd = {
-                                id: "MANUAL_" + Math.floor(Math.random() * 10000),
+                                id: 1, // Defaulting to AD1 category
                                 time: new Date().toISOString(),
                                 text: publicUrl,
                                 format: isVideo ? "Video" : "Image",
-                                Approved: true
+                                Approved: "true"
                               };
 
+                              // RLS is disabled, use client directly
+                              const { error: dbError } = await supabase
+                                .from("your_name_table")
+                                .insert([{
+                                  id: 4,
+                                  text: publicUrl,
+                                  time: new Date().toISOString(),
+                                  format: isVideo ? "Video" : "Image",
+                                  Approved: "true"
+                                }]);
+
+                              if (dbError) throw dbError;
+
+
                               setAllApprovedAds(prev => [newAd, ...prev]);
+                              await fetchAdTableLinks(); // Refresh to ensure UI is in sync
 
                               try { addSbToast("Media uploaded and approved!", "success"); } catch (err) { }
                             } catch (err) {
